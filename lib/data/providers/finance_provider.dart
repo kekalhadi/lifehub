@@ -77,6 +77,14 @@ final financeCategoriesProvider = FutureProvider.family<List<FinanceCategory>, T
   },
 );
 
+// All finance categories (stream) — dipakai di layar kelola kategori
+final allFinanceCategoriesProvider = StreamProvider<List<FinanceCategory>>((ref) async* {
+  final isar = await ref.watch(isarProvider.future);
+  yield* isar.financeCategorys
+      .where()
+      .watch(fireImmediately: true);
+});
+
 // Savings goals provider
 final savingsGoalsProvider = FutureProvider<List<SavingsGoal>>((ref) async {
   final isar = await ref.watch(isarProvider.future);
@@ -110,6 +118,7 @@ final budgetStatusProvider = FutureProvider<List<BudgetStatus>>((ref) async {
   return categories.map((cat) {
     final spent = spentByCategory[cat.name] ?? 0;
     return BudgetStatus(
+      categoryId: cat.id,
       categoryName: cat.name,
       categoryIcon: cat.icon,
       categoryColorHex: cat.colorHex,
@@ -211,6 +220,89 @@ class FinanceNotifier extends Notifier<AsyncValue<void>> {
     ref.invalidate(savingsGoalsProvider);
   }
 
+  // ===== Category CRUD =====
+
+  /// Buat atau perbarui kategori finance.
+  /// Mengembalikan id (>0 sukses, -1 gagal).
+  Future<int> saveFinanceCategory(FinanceCategory category) async {
+    state = const AsyncValue.loading();
+    try {
+      final isar = await ref.read(isarProvider.future);
+      int id = 0;
+      await isar.writeTxn(() async {
+        id = await isar.financeCategorys.put(category);
+      });
+      state = const AsyncValue.data(null);
+      _invalidateCategories();
+      return id;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return -1;
+    }
+  }
+
+  /// Hapus kategori finance. Kategori bawaan tidak bisa dihapus.
+  /// Transaksi yang memakai nama kategori ini tetap dipertahankan
+  /// (datanya sudah ter-snapshot di record transaksi).
+  Future<void> deleteFinanceCategory(int id) async {
+    state = const AsyncValue.loading();
+    try {
+      final isar = await ref.read(isarProvider.future);
+      await isar.writeTxn(() async {
+        final cat = await isar.financeCategorys.get(id);
+        if (cat != null && cat.isDefault) {
+          throw Exception('Tidak bisa menghapus kategori bawaan');
+        }
+        await isar.financeCategorys.delete(id);
+      });
+      state = const AsyncValue.data(null);
+      _invalidateCategories();
+      _invalidateBudgets();
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  void _invalidateCategories() {
+    ref.invalidate(financeCategoriesProvider(TransactionType.expense));
+    ref.invalidate(financeCategoriesProvider(TransactionType.income));
+    ref.invalidate(allFinanceCategoriesProvider);
+  }
+
+  // ===== Budget CRUD =====
+
+  /// Buat atau perbarui batas anggaran untuk sebuah kategori pengeluaran.
+  Future<void> setBudget(int categoryId, double amount) async {
+    final isar = await ref.read(isarProvider.future);
+    await isar.writeTxn(() async {
+      final cat = await isar.financeCategorys.get(categoryId);
+      if (cat != null) {
+        cat.budgetLimit = amount;
+        await isar.financeCategorys.put(cat);
+      }
+    });
+    _invalidateBudgets();
+  }
+
+  /// Hapus anggaran (set budgetLimit = null). Kategori tetap dipertahankan,
+  /// hanya batas anggarannya yang dihapus.
+  Future<void> removeBudget(int categoryId) async {
+    final isar = await ref.read(isarProvider.future);
+    await isar.writeTxn(() async {
+      final cat = await isar.financeCategorys.get(categoryId);
+      if (cat != null) {
+        cat.budgetLimit = null;
+        await isar.financeCategorys.put(cat);
+      }
+    });
+    _invalidateBudgets();
+  }
+
+  void _invalidateBudgets() {
+    ref.invalidate(budgetStatusProvider);
+    ref.invalidate(financeCategoriesProvider(TransactionType.expense));
+  }
+
   void _invalidateAll() {
     ref.invalidate(transactionsProvider);
     ref.invalidate(todayTransactionsProvider);
@@ -266,6 +358,7 @@ class MonthlySummary {
 }
 
 class BudgetStatus {
+  final int categoryId;
   final String categoryName;
   final String categoryIcon;
   final String categoryColorHex;
@@ -277,6 +370,7 @@ class BudgetStatus {
   bool get isNearLimit => percentage >= 0.8 && !isOverBudget;
 
   const BudgetStatus({
+    required this.categoryId,
     required this.categoryName,
     required this.categoryIcon,
     required this.categoryColorHex,

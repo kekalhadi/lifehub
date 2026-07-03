@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../data/models/finance_model.dart';
 import '../../../../data/providers/finance_provider.dart';
+import 'add_finance_category_screen.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
   const AddTransactionScreen({super.key});
@@ -52,7 +54,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               child: Row(
                 children: [
                   _TypeButton(
-                    label: '📥 Pemasukan',
+                    icon: Icons.south_west,
+                    label: 'Pemasukan',
                     isSelected: _type == TransactionType.income,
                     color: AppColors.income,
                     onTap: () => setState(() {
@@ -61,7 +64,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     }),
                   ),
                   _TypeButton(
-                    label: '📤 Pengeluaran',
+                    icon: Icons.north_east,
+                    label: 'Pengeluaran',
                     isSelected: _type == TransactionType.expense,
                     color: AppColors.expense,
                     onTap: () => setState(() {
@@ -107,45 +111,90 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               data: (categories) => Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: categories.map((cat) {
-                  final isSelected = _selectedCategory?.id == cat.id;
-                  final catColor = ColorHelper.fromHex(cat.colorHex);
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedCategory = cat),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
+                children: [
+                  ...categories.map((cat) {
+                    final isSelected = _selectedCategory?.id == cat.id;
+                    final catColor = ColorHelper.fromHex(cat.colorHex);
+                    return GestureDetector(
+                      onTap: () =>
+                          setState(() => _selectedCategory = cat),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? catColor.withOpacity(0.15)
+                              : theme.inputDecorationTheme.fillColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected ? catColor : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CategoryIcon(
+                              icon: cat.icon,
+                              size: 18,
+                              color: isSelected ? catColor : null,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              cat.name,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: isSelected ? catColor : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  // Tombol tambah kategori baru
+                  GestureDetector(
+                    onTap: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AddFinanceCategoryScreen(type: _type),
+                        ),
+                      );
+                      if (mounted) setState(() {});
+                    },
+                    child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? catColor.withOpacity(0.15)
-                            : theme.inputDecorationTheme.fillColor,
+                        color: theme.inputDecorationTheme.fillColor,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSelected ? catColor : Colors.transparent,
-                          width: 2,
+                          color: theme.dividerColor.withOpacity(0.5),
+                          width: 1.5,
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(cat.icon,
-                              style: const TextStyle(fontSize: 18)),
+                          Icon(Icons.add,
+                              size: 18, color: AppColors.primary),
                           const SizedBox(width: 6),
                           Text(
-                            cat.name,
+                            'Baru',
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                              color: isSelected ? catColor : null,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  );
-                }).toList(),
+                  ),
+                ],
               ),
             ),
 
@@ -185,8 +234,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         ),
                         child: Column(
                           children: [
-                            Text(wallet.icon,
-                                style: const TextStyle(fontSize: 22)),
+                            CategoryIcon(
+                              icon: wallet.icon,
+                              size: 22,
+                              color: isSelected ? walletColor : null,
+                            ),
                             const SizedBox(height: 4),
                             Text(
                               wallet.name,
@@ -331,12 +383,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 }
 
 class _TypeButton extends StatelessWidget {
+  final IconData icon;
   final String label;
   final bool isSelected;
   final Color color;
   final VoidCallback onTap;
 
   const _TypeButton({
+    required this.icon,
     required this.label,
     required this.isSelected,
     required this.color,
@@ -356,13 +410,21 @@ class _TypeButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : color,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: isSelected ? Colors.white : color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
         ),
       ),

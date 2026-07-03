@@ -132,14 +132,16 @@ class _NotesScreenState extends ConsumerState<NotesScreen>
                         MaterialPageRoute(builder: (_) => const AddCategoryScreen()),
                       );
                       if (result != null && result is int) {
-                        ref.read(noteCategoriesProvider).when(
-                          data: (cats) {
-                            final newCat = cats.firstWhere((c) => c.id == result);
-                            setState(() => _selectedCategory = newCat);
-                          },
-                          loading: () {},
-                          error: (_, __) {},
+                        // Paksa refresh & ambil data terbaru (hindari cache stale
+                        // yang sebelumnya menyebabkan firstWhere "No element")
+                        ref.invalidate(noteCategoriesProvider);
+                        final cats = await ref.read(noteCategoriesProvider.future);
+                        if (cats.isEmpty) return;
+                        final newCat = cats.firstWhere(
+                          (c) => c.id == result,
+                          orElse: () => cats.first,
                         );
+                        setState(() => _selectedCategory = newCat);
                       }
                     },
                   ),
@@ -233,22 +235,10 @@ class _NotesScreenState extends ConsumerState<NotesScreen>
           );
         },
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'journal_fab',
-            backgroundColor: AppColors.noteJournal,
-            onPressed: () => _openEditor(context, null, isJournal: true),
-            child: const Text('📔', style: TextStyle(fontSize: 16)),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: 'note_fab',
-            onPressed: () => _openEditor(context, null),
-            child: const Icon(Icons.add),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'note_fab',
+        onPressed: () => _openEditor(context, null),
+        child: const Icon(Icons.add),
       ),
     );
   }

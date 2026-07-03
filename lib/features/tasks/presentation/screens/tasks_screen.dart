@@ -41,6 +41,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       ),
       body: _DailyTasksTab(showCompleted: _showCompleted),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'tasks_fab',
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const AddTaskScreen()),
         ),

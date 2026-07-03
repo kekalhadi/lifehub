@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../data/models/finance_model.dart';
 import '../../../../data/providers/finance_provider.dart';
 import 'add_transaction_screen.dart';
+import 'add_budget_screen.dart';
+import 'finance_category_management_screen.dart';
 
 class FinanceScreen extends ConsumerStatefulWidget {
   const FinanceScreen({super.key});
@@ -19,11 +22,19 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   DateTime _selectedMonth = DateTime.now();
+  int _currentTab = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      // Update saat tab sudah selesai berpindah (bukan saat animasi).
+      if (!_tabController.indexIsChanging &&
+          _tabController.index != _currentTab) {
+        setState(() => _currentTab = _tabController.index);
+      }
+    });
   }
 
   @override
@@ -39,6 +50,18 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Keuangan'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.category_outlined),
+            tooltip: 'Kelola Kategori',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    const FinanceCategoryManagementScreen(),
+              ),
+            ),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -60,12 +83,28 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
+        heroTag: 'finance_fab',
+        onPressed: _onFabPressed,
+        child: Icon(
+          _currentTab == 1
+              ? Icons.account_balance_wallet_outlined
+              : Icons.add,
         ),
-        child: const Icon(Icons.add),
       ),
     );
+  }
+
+  /// FAB bersifat kontekstual: tab Anggaran → buat anggaran, sisanya → tambah transaksi.
+  void _onFabPressed() {
+    if (_currentTab == 1) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AddBudgetScreen()),
+      );
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
+      );
+    }
   }
 }
 
@@ -244,8 +283,11 @@ class _TransactionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: Text(transaction.categoryIcon,
-                  style: const TextStyle(fontSize: 22)),
+              child: CategoryIcon(
+                icon: transaction.categoryIcon,
+                size: 22,
+                color: catColor,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -293,23 +335,98 @@ class _BudgetTab extends ConsumerWidget {
       error: (e, _) => Center(child: Text('Error: $e')),
       data: (budgets) {
         if (budgets.isEmpty) {
-          return const Center(child: Text('Belum ada kategori dengan anggaran.'));
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.account_balance_wallet_outlined,
+                      size: 64, color: Colors.grey.withOpacity(0.4)),
+                  const SizedBox(height: 16),
+                  Text('Belum ada anggaran',
+                      style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Atur batas pengeluaran per kategori\nagar lebih mudah dikontrol tiap bulan.',
+                    style: theme.textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const AddBudgetScreen()),
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Tambah Anggaran'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: budgets.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (_, i) => _BudgetCard(budget: budgets[i]),
+          itemBuilder: (_, i) => _BudgetCard(
+            budget: budgets[i],
+            onEdit: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => AddBudgetScreen(editing: budgets[i]),
+              ),
+            ),
+            onDelete: () =>
+                _confirmBudgetDelete(context, ref, budgets[i]),
+          ),
         );
       },
     );
   }
 }
 
+Future<void> _confirmBudgetDelete(
+  BuildContext context,
+  WidgetRef ref,
+  BudgetStatus budget,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Hapus Anggaran?'),
+      content: Text(
+        'Anggaran untuk "${budget.categoryName}" akan dihapus. '
+        'Kategori tetap tersedia, hanya batas anggarannya yang dihilangkan.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Batal'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+          child: const Text('Hapus'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true) {
+    await ref.read(financeNotifierProvider.notifier).removeBudget(budget.categoryId);
+  }
+}
+
 class _BudgetCard extends StatelessWidget {
   final BudgetStatus budget;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-  const _BudgetCard({required this.budget});
+  const _BudgetCard({
+    required this.budget,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -321,69 +438,94 @@ class _BudgetCard extends StatelessWidget {
         : AppColors.secondary;
     final catColor = ColorHelper.fromHex(budget.categoryColorHex);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(budget.categoryIcon, style: const TextStyle(fontSize: 28)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(budget.categoryName, style: theme.textTheme.labelLarge),
-                    Text(
-                      '${CurrencyFormatter.format(budget.spent)} / ${CurrencyFormatter.format(budget.budget)}',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
+    return GestureDetector(
+      onTap: onEdit,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.cardTheme.color,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CategoryIcon(
+                  icon: budget.categoryIcon,
+                  size: 28,
+                  color: catColor,
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${(budget.percentage * 100).toInt()}%',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: color, fontWeight: FontWeight.w700,
-                    ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(budget.categoryName, style: theme.textTheme.labelLarge),
+                      Text(
+                        '${CurrencyFormatter.format(budget.spent)} / ${CurrencyFormatter.format(budget.budget)}',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
                   ),
-                  if (budget.isOverBudget)
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
                     Text(
-                      'Melebihi!',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.danger, fontSize: 11,
+                      '${(budget.percentage * 100).toInt()}%',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: color, fontWeight: FontWeight.w700,
                       ),
                     ),
-                ],
+                    if (budget.isOverBudget)
+                      Text(
+                        'Melebihi!',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.danger, fontSize: 11,
+                        ),
+                      ),
+                  ],
+                ),
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
+                    size: 20,
+                    color: theme.iconTheme.color?.withOpacity(0.5),
+                  ),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit Anggaran')),
+                    PopupMenuItem(value: 'delete', child: Text('Hapus Anggaran')),
+                  ],
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      onEdit();
+                    } else if (value == 'delete') {
+                      onDelete();
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: budget.percentage,
+                backgroundColor: catColor.withOpacity(0.1),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                minHeight: 8,
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: budget.percentage,
-              backgroundColor: catColor.withOpacity(0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-              minHeight: 8,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Sisa: ${CurrencyFormatter.format((budget.budget - budget.spent).abs())}${budget.isOverBudget ? ' (melebihi)' : ''}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: budget.isOverBudget ? AppColors.danger : null,
+            const SizedBox(height: 8),
+            Text(
+              'Sisa: ${CurrencyFormatter.format((budget.budget - budget.spent).abs())}${budget.isOverBudget ? ' (melebihi)' : ''}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: budget.isOverBudget ? AppColors.danger : null,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -603,7 +745,8 @@ class _EmptyFinance extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('💳', style: TextStyle(fontSize: 64)),
+          Icon(Icons.credit_card,
+              size: 64, color: Colors.grey.withOpacity(0.4)),
           const SizedBox(height: 16),
           Text(
             'Belum ada transaksi\nTap + untuk tambah transaksi',

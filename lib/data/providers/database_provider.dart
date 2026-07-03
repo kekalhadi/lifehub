@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../core/utils/category_icons.dart';
 import '../models/note_model.dart';
 import '../models/finance_model.dart';
 import '../models/task_model.dart';
@@ -70,10 +71,67 @@ Future<void> _migrateNoteCategories(Isar isar) async {
   });
 }
 
+/// Migrasi emoji lama → nama ikon untuk kategori finance, transaksi, dan dompet.
+/// Idempoten: hanya konversi nilai yang ada di [kEmojiToIconKey].
+Future<void> _migrateFinanceIcons(Isar isar) async {
+  await isar.writeTxn(() async {
+    // Kategori finance
+    final categories = await isar.financeCategorys.where().findAll();
+    bool catChanged = false;
+    for (final cat in categories) {
+      if (!isIconKey(cat.icon)) {
+        final migrated = migrateEmojiToKey(cat.icon);
+        if (migrated != cat.icon) {
+          cat.icon = migrated;
+          catChanged = true;
+        }
+      }
+    }
+    if (catChanged) {
+      await isar.financeCategorys.putAll(categories);
+    }
+
+    // Transaksi
+    final transactions = await isar.transactions.where().findAll();
+    bool txnChanged = false;
+    for (final t in transactions) {
+      if (!isIconKey(t.categoryIcon)) {
+        final migrated = migrateEmojiToKey(t.categoryIcon);
+        if (migrated != t.categoryIcon) {
+          t.categoryIcon = migrated;
+          txnChanged = true;
+        }
+      }
+    }
+    if (txnChanged) {
+      await isar.transactions.putAll(transactions);
+    }
+
+    // Dompet
+    final wallets = await isar.wallets.where().findAll();
+    bool walletChanged = false;
+    for (final w in wallets) {
+      if (!isIconKey(w.icon)) {
+        final migrated = migrateEmojiToKey(w.icon);
+        if (migrated != w.icon) {
+          w.icon = migrated;
+          walletChanged = true;
+        }
+      }
+    }
+    if (walletChanged) {
+      await isar.wallets.putAll(wallets);
+    }
+  });
+}
+
 Future<void> _seedDefaultData(Isar isar) async {
   // === Note categories: migrasi ke single default 'Umum' ===
   // Selalu jalan (idempotent) agar perubahan schema terlihat walau ada data lama.
   await _migrateNoteCategories(isar);
+
+  // === Migrasi emoji lama → nama ikon (finance) ===
+  await _migrateFinanceIcons(isar);
 
   // Seed default finance categories if empty
   final catCount = await isar.financeCategorys.count();
@@ -82,55 +140,50 @@ Future<void> _seedDefaultData(Isar isar) async {
       final expenseCategories = [
         FinanceCategory()
           ..name = 'Makanan & Minuman'
-          ..icon = '🍜'
+          ..icon = 'ramen_dining'
           ..colorHex = '#EF4444'
           ..type = TransactionType.expense
-          ..budgetLimit = 1000000
+          ..budgetLimit = 1000000 // satu contoh anggaran
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Transportasi'
-          ..icon = '🚗'
+          ..icon = 'directions_car'
           ..colorHex = '#F59E0B'
           ..type = TransactionType.expense
-          ..budgetLimit = 500000
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Belanja'
-          ..icon = '🛒'
+          ..icon = 'shopping_cart'
           ..colorHex = '#8B5CF6'
           ..type = TransactionType.expense
-          ..budgetLimit = 800000
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Hiburan'
-          ..icon = '🎮'
+          ..icon = 'sports_esports'
           ..colorHex = '#EC4899'
           ..type = TransactionType.expense
-          ..budgetLimit = 300000
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Kesehatan'
-          ..icon = '💊'
+          ..icon = 'medication'
           ..colorHex = '#10B981'
           ..type = TransactionType.expense
-          ..budgetLimit = 500000
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Pendidikan'
-          ..icon = '📚'
+          ..icon = 'menu_book'
           ..colorHex = '#06B6D4'
           ..type = TransactionType.expense
-          ..budgetLimit = 500000
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Tagihan'
-          ..icon = '🧾'
+          ..icon = 'receipt_long'
           ..colorHex = '#64748B'
           ..type = TransactionType.expense
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Lainnya'
-          ..icon = '📦'
+          ..icon = 'inventory_2'
           ..colorHex = '#94A3B8'
           ..type = TransactionType.expense
           ..isDefault = true,
@@ -138,25 +191,25 @@ Future<void> _seedDefaultData(Isar isar) async {
       final incomeCategories = [
         FinanceCategory()
           ..name = 'Gaji'
-          ..icon = '💼'
+          ..icon = 'work'
           ..colorHex = '#10B981'
           ..type = TransactionType.income
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Freelance'
-          ..icon = '💻'
+          ..icon = 'laptop'
           ..colorHex = '#6366F1'
           ..type = TransactionType.income
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Investasi'
-          ..icon = '📈'
+          ..icon = 'trending_up'
           ..colorHex = '#F59E0B'
           ..type = TransactionType.income
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Lainnya'
-          ..icon = '💰'
+          ..icon = 'savings'
           ..colorHex = '#10B981'
           ..type = TransactionType.income
           ..isDefault = true,
@@ -172,19 +225,19 @@ Future<void> _seedDefaultData(Isar isar) async {
       final wallets = [
         Wallet()
           ..name = 'Uang Tunai'
-          ..icon = '💵'
+          ..icon = 'payments'
           ..colorHex = '#10B981'
           ..type = WalletType.cash
           ..balance = 0,
         Wallet()
           ..name = 'Rekening Bank'
-          ..icon = '🏦'
+          ..icon = 'account_balance'
           ..colorHex = '#6366F1'
           ..type = WalletType.bank
           ..balance = 0,
         Wallet()
           ..name = 'E-Wallet'
-          ..icon = '📱'
+          ..icon = 'smartphone'
           ..colorHex = '#F59E0B'
           ..type = WalletType.ewallet
           ..balance = 0,
