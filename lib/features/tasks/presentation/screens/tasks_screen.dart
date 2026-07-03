@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/task_model.dart';
 import '../../../../data/providers/tasks_provider.dart';
 import 'add_task_screen.dart';
@@ -60,7 +61,6 @@ class _DailyTasksTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final filter = TaskFilter(onlyStandalone: true, showCompleted: showCompleted);
     final tasksAsync = ref.watch(allTasksStreamProvider(filter));
 
@@ -85,7 +85,7 @@ class _DailyTasksTab extends ConsumerWidget {
           children: [
             if (highPriority.isNotEmpty) ...[
               _PriorityLabel(
-                  label: '🔴 Prioritas Tinggi',
+                  label: 'Prioritas Tinggi',
                   color: AppColors.priorityHigh),
               const SizedBox(height: 8),
               ...highPriority.map((t) => Padding(
@@ -96,7 +96,7 @@ class _DailyTasksTab extends ConsumerWidget {
             ],
             if (medPriority.isNotEmpty) ...[
               _PriorityLabel(
-                  label: '🟡 Prioritas Sedang',
+                  label: 'Prioritas Sedang',
                   color: AppColors.priorityMedium),
               const SizedBox(height: 8),
               ...medPriority.map((t) => Padding(
@@ -107,7 +107,7 @@ class _DailyTasksTab extends ConsumerWidget {
             ],
             if (lowPriority.isNotEmpty) ...[
               _PriorityLabel(
-                  label: '🟢 Prioritas Rendah',
+                  label: 'Prioritas Rendah',
                   color: AppColors.priorityLow),
               const SizedBox(height: 8),
               ...lowPriority.map((t) => Padding(
@@ -157,17 +157,8 @@ class _TaskCard extends ConsumerWidget {
           MaterialPageRoute(
               builder: (_) => AddTaskScreen(task: task)),
         ),
-        child: Container(
+        child: GlassCard(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: theme.cardTheme.color,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isOverdue
-                  ? AppColors.danger.withOpacity(0.3)
-                  : theme.dividerColor,
-            ),
-          ),
           child: Row(
             children: [
               GestureDetector(
@@ -290,7 +281,21 @@ class _PriorityLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Text(label, style: theme.textTheme.labelLarge?.copyWith(color: color));
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: theme.textTheme.labelLarge?.copyWith(color: color)),
+      ],
+    );
   }
 }
 
@@ -304,7 +309,12 @@ class _EmptyTasks extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('✅', style: TextStyle(fontSize: 64)),
+          IconBox(
+            icon: Icons.task_alt_outlined,
+            size: 72,
+            iconSize: 36,
+            radius: 20,
+          ),
           const SizedBox(height: 16),
           Text(
             'Tidak ada tugas hari ini\nTap + untuk tambah tugas',

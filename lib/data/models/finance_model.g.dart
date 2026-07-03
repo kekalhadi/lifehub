@@ -22,28 +22,23 @@ const FinanceCategorySchema = CollectionSchema(
       name: r'budgetLimit',
       type: IsarType.double,
     ),
-    r'colorHex': PropertySchema(
-      id: 1,
-      name: r'colorHex',
-      type: IsarType.string,
-    ),
     r'icon': PropertySchema(
-      id: 2,
+      id: 1,
       name: r'icon',
       type: IsarType.string,
     ),
     r'isDefault': PropertySchema(
-      id: 3,
+      id: 2,
       name: r'isDefault',
       type: IsarType.bool,
     ),
     r'name': PropertySchema(
-      id: 4,
+      id: 3,
       name: r'name',
       type: IsarType.string,
     ),
     r'type': PropertySchema(
-      id: 5,
+      id: 4,
       name: r'type',
       type: IsarType.byte,
       enumMap: _FinanceCategorytypeEnumValueMap,
@@ -69,7 +64,6 @@ int _financeCategoryEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
-  bytesCount += 3 + object.colorHex.length * 3;
   bytesCount += 3 + object.icon.length * 3;
   bytesCount += 3 + object.name.length * 3;
   return bytesCount;
@@ -82,11 +76,10 @@ void _financeCategorySerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeDouble(offsets[0], object.budgetLimit);
-  writer.writeString(offsets[1], object.colorHex);
-  writer.writeString(offsets[2], object.icon);
-  writer.writeBool(offsets[3], object.isDefault);
-  writer.writeString(offsets[4], object.name);
-  writer.writeByte(offsets[5], object.type.index);
+  writer.writeString(offsets[1], object.icon);
+  writer.writeBool(offsets[2], object.isDefault);
+  writer.writeString(offsets[3], object.name);
+  writer.writeByte(offsets[4], object.type.index);
 }
 
 FinanceCategory _financeCategoryDeserialize(
@@ -97,13 +90,12 @@ FinanceCategory _financeCategoryDeserialize(
 ) {
   final object = FinanceCategory();
   object.budgetLimit = reader.readDoubleOrNull(offsets[0]);
-  object.colorHex = reader.readString(offsets[1]);
-  object.icon = reader.readString(offsets[2]);
+  object.icon = reader.readString(offsets[1]);
   object.id = id;
-  object.isDefault = reader.readBool(offsets[3]);
-  object.name = reader.readString(offsets[4]);
+  object.isDefault = reader.readBool(offsets[2]);
+  object.name = reader.readString(offsets[3]);
   object.type =
-      _FinanceCategorytypeValueEnumMap[reader.readByteOrNull(offsets[5])] ??
+      _FinanceCategorytypeValueEnumMap[reader.readByteOrNull(offsets[4])] ??
           TransactionType.income;
   return object;
 }
@@ -120,12 +112,10 @@ P _financeCategoryDeserializeProp<P>(
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
-    case 3:
       return (reader.readBool(offset)) as P;
-    case 4:
+    case 3:
       return (reader.readString(offset)) as P;
-    case 5:
+    case 4:
       return (_FinanceCategorytypeValueEnumMap[reader.readByteOrNull(offset)] ??
           TransactionType.income) as P;
     default:
@@ -317,142 +307,6 @@ extension FinanceCategoryQueryFilter
         upper: upper,
         includeUpper: includeUpper,
         epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterFilterCondition>
-      colorHexEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterFilterCondition>
-      colorHexGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterFilterCondition>
-      colorHexLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterFilterCondition>
-      colorHexBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'colorHex',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterFilterCondition>
-      colorHexStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterFilterCondition>
-      colorHexEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterFilterCondition>
-      colorHexContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterFilterCondition>
-      colorHexMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'colorHex',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterFilterCondition>
-      colorHexIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'colorHex',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterFilterCondition>
-      colorHexIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'colorHex',
-        value: '',
       ));
     });
   }
@@ -874,20 +728,6 @@ extension FinanceCategoryQuerySortBy
     });
   }
 
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterSortBy>
-      sortByColorHex() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.asc);
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterSortBy>
-      sortByColorHexDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.desc);
-    });
-  }
-
   QueryBuilder<FinanceCategory, FinanceCategory, QAfterSortBy> sortByIcon() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'icon', Sort.asc);
@@ -955,20 +795,6 @@ extension FinanceCategoryQuerySortThenBy
       thenByBudgetLimitDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'budgetLimit', Sort.desc);
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterSortBy>
-      thenByColorHex() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.asc);
-    });
-  }
-
-  QueryBuilder<FinanceCategory, FinanceCategory, QAfterSortBy>
-      thenByColorHexDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.desc);
     });
   }
 
@@ -1047,13 +873,6 @@ extension FinanceCategoryQueryWhereDistinct
     });
   }
 
-  QueryBuilder<FinanceCategory, FinanceCategory, QDistinct> distinctByColorHex(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'colorHex', caseSensitive: caseSensitive);
-    });
-  }
-
   QueryBuilder<FinanceCategory, FinanceCategory, QDistinct> distinctByIcon(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1094,12 +913,6 @@ extension FinanceCategoryQueryProperty
       budgetLimitProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'budgetLimit');
-    });
-  }
-
-  QueryBuilder<FinanceCategory, String, QQueryOperations> colorHexProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'colorHex');
     });
   }
 
@@ -1145,23 +958,18 @@ const WalletSchema = CollectionSchema(
       name: r'balance',
       type: IsarType.double,
     ),
-    r'colorHex': PropertySchema(
-      id: 1,
-      name: r'colorHex',
-      type: IsarType.string,
-    ),
     r'icon': PropertySchema(
-      id: 2,
+      id: 1,
       name: r'icon',
       type: IsarType.string,
     ),
     r'name': PropertySchema(
-      id: 3,
+      id: 2,
       name: r'name',
       type: IsarType.string,
     ),
     r'type': PropertySchema(
-      id: 4,
+      id: 3,
       name: r'type',
       type: IsarType.byte,
       enumMap: _WallettypeEnumValueMap,
@@ -1187,7 +995,6 @@ int _walletEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
-  bytesCount += 3 + object.colorHex.length * 3;
   bytesCount += 3 + object.icon.length * 3;
   bytesCount += 3 + object.name.length * 3;
   return bytesCount;
@@ -1200,10 +1007,9 @@ void _walletSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeDouble(offsets[0], object.balance);
-  writer.writeString(offsets[1], object.colorHex);
-  writer.writeString(offsets[2], object.icon);
-  writer.writeString(offsets[3], object.name);
-  writer.writeByte(offsets[4], object.type.index);
+  writer.writeString(offsets[1], object.icon);
+  writer.writeString(offsets[2], object.name);
+  writer.writeByte(offsets[3], object.type.index);
 }
 
 Wallet _walletDeserialize(
@@ -1214,11 +1020,10 @@ Wallet _walletDeserialize(
 ) {
   final object = Wallet();
   object.balance = reader.readDouble(offsets[0]);
-  object.colorHex = reader.readString(offsets[1]);
-  object.icon = reader.readString(offsets[2]);
+  object.icon = reader.readString(offsets[1]);
   object.id = id;
-  object.name = reader.readString(offsets[3]);
-  object.type = _WallettypeValueEnumMap[reader.readByteOrNull(offsets[4])] ??
+  object.name = reader.readString(offsets[2]);
+  object.type = _WallettypeValueEnumMap[reader.readByteOrNull(offsets[3])] ??
       WalletType.cash;
   return object;
 }
@@ -1237,8 +1042,6 @@ P _walletDeserializeProp<P>(
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
-    case 4:
       return (_WallettypeValueEnumMap[reader.readByteOrNull(offset)] ??
           WalletType.cash) as P;
     default:
@@ -1403,136 +1206,6 @@ extension WalletQueryFilter on QueryBuilder<Wallet, Wallet, QFilterCondition> {
         upper: upper,
         includeUpper: includeUpper,
         epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterFilterCondition> colorHexEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterFilterCondition> colorHexGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterFilterCondition> colorHexLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterFilterCondition> colorHexBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'colorHex',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterFilterCondition> colorHexStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterFilterCondition> colorHexEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterFilterCondition> colorHexContains(
-      String value,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterFilterCondition> colorHexMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'colorHex',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterFilterCondition> colorHexIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'colorHex',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterFilterCondition> colorHexIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'colorHex',
-        value: '',
       ));
     });
   }
@@ -1918,18 +1591,6 @@ extension WalletQuerySortBy on QueryBuilder<Wallet, Wallet, QSortBy> {
     });
   }
 
-  QueryBuilder<Wallet, Wallet, QAfterSortBy> sortByColorHex() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterSortBy> sortByColorHexDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.desc);
-    });
-  }
-
   QueryBuilder<Wallet, Wallet, QAfterSortBy> sortByIcon() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'icon', Sort.asc);
@@ -1977,18 +1638,6 @@ extension WalletQuerySortThenBy on QueryBuilder<Wallet, Wallet, QSortThenBy> {
   QueryBuilder<Wallet, Wallet, QAfterSortBy> thenByBalanceDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'balance', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterSortBy> thenByColorHex() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Wallet, Wallet, QAfterSortBy> thenByColorHexDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.desc);
     });
   }
 
@@ -2048,13 +1697,6 @@ extension WalletQueryWhereDistinct on QueryBuilder<Wallet, Wallet, QDistinct> {
     });
   }
 
-  QueryBuilder<Wallet, Wallet, QDistinct> distinctByColorHex(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'colorHex', caseSensitive: caseSensitive);
-    });
-  }
-
   QueryBuilder<Wallet, Wallet, QDistinct> distinctByIcon(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -2086,12 +1728,6 @@ extension WalletQueryProperty on QueryBuilder<Wallet, Wallet, QQueryProperty> {
   QueryBuilder<Wallet, double, QQueryOperations> balanceProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'balance');
-    });
-  }
-
-  QueryBuilder<Wallet, String, QQueryOperations> colorHexProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'colorHex');
     });
   }
 
@@ -2130,54 +1766,49 @@ const TransactionSchema = CollectionSchema(
       name: r'amount',
       type: IsarType.double,
     ),
-    r'categoryColorHex': PropertySchema(
-      id: 1,
-      name: r'categoryColorHex',
-      type: IsarType.string,
-    ),
     r'categoryIcon': PropertySchema(
-      id: 2,
+      id: 1,
       name: r'categoryIcon',
       type: IsarType.string,
     ),
     r'categoryName': PropertySchema(
-      id: 3,
+      id: 2,
       name: r'categoryName',
       type: IsarType.string,
     ),
     r'createdAt': PropertySchema(
-      id: 4,
+      id: 3,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'date': PropertySchema(
-      id: 5,
+      id: 4,
       name: r'date',
       type: IsarType.dateTime,
     ),
     r'isRecurring': PropertySchema(
-      id: 6,
+      id: 5,
       name: r'isRecurring',
       type: IsarType.bool,
     ),
     r'note': PropertySchema(
-      id: 7,
+      id: 6,
       name: r'note',
       type: IsarType.string,
     ),
     r'recurringInterval': PropertySchema(
-      id: 8,
+      id: 7,
       name: r'recurringInterval',
       type: IsarType.string,
     ),
     r'type': PropertySchema(
-      id: 9,
+      id: 8,
       name: r'type',
       type: IsarType.byte,
       enumMap: _TransactiontypeEnumValueMap,
     ),
     r'walletName': PropertySchema(
-      id: 10,
+      id: 9,
       name: r'walletName',
       type: IsarType.string,
     )
@@ -2202,7 +1833,6 @@ int _transactionEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
-  bytesCount += 3 + object.categoryColorHex.length * 3;
   bytesCount += 3 + object.categoryIcon.length * 3;
   bytesCount += 3 + object.categoryName.length * 3;
   bytesCount += 3 + object.note.length * 3;
@@ -2223,16 +1853,15 @@ void _transactionSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeDouble(offsets[0], object.amount);
-  writer.writeString(offsets[1], object.categoryColorHex);
-  writer.writeString(offsets[2], object.categoryIcon);
-  writer.writeString(offsets[3], object.categoryName);
-  writer.writeDateTime(offsets[4], object.createdAt);
-  writer.writeDateTime(offsets[5], object.date);
-  writer.writeBool(offsets[6], object.isRecurring);
-  writer.writeString(offsets[7], object.note);
-  writer.writeString(offsets[8], object.recurringInterval);
-  writer.writeByte(offsets[9], object.type.index);
-  writer.writeString(offsets[10], object.walletName);
+  writer.writeString(offsets[1], object.categoryIcon);
+  writer.writeString(offsets[2], object.categoryName);
+  writer.writeDateTime(offsets[3], object.createdAt);
+  writer.writeDateTime(offsets[4], object.date);
+  writer.writeBool(offsets[5], object.isRecurring);
+  writer.writeString(offsets[6], object.note);
+  writer.writeString(offsets[7], object.recurringInterval);
+  writer.writeByte(offsets[8], object.type.index);
+  writer.writeString(offsets[9], object.walletName);
 }
 
 Transaction _transactionDeserialize(
@@ -2243,19 +1872,18 @@ Transaction _transactionDeserialize(
 ) {
   final object = Transaction();
   object.amount = reader.readDouble(offsets[0]);
-  object.categoryColorHex = reader.readString(offsets[1]);
-  object.categoryIcon = reader.readString(offsets[2]);
-  object.categoryName = reader.readString(offsets[3]);
-  object.createdAt = reader.readDateTime(offsets[4]);
-  object.date = reader.readDateTime(offsets[5]);
+  object.categoryIcon = reader.readString(offsets[1]);
+  object.categoryName = reader.readString(offsets[2]);
+  object.createdAt = reader.readDateTime(offsets[3]);
+  object.date = reader.readDateTime(offsets[4]);
   object.id = id;
-  object.isRecurring = reader.readBool(offsets[6]);
-  object.note = reader.readString(offsets[7]);
-  object.recurringInterval = reader.readStringOrNull(offsets[8]);
+  object.isRecurring = reader.readBool(offsets[5]);
+  object.note = reader.readString(offsets[6]);
+  object.recurringInterval = reader.readStringOrNull(offsets[7]);
   object.type =
-      _TransactiontypeValueEnumMap[reader.readByteOrNull(offsets[9])] ??
+      _TransactiontypeValueEnumMap[reader.readByteOrNull(offsets[8])] ??
           TransactionType.income;
-  object.walletName = reader.readString(offsets[10]);
+  object.walletName = reader.readString(offsets[9]);
   return object;
 }
 
@@ -2273,21 +1901,19 @@ P _transactionDeserializeProp<P>(
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 4:
       return (reader.readDateTime(offset)) as P;
     case 5:
-      return (reader.readDateTime(offset)) as P;
-    case 6:
       return (reader.readBool(offset)) as P;
-    case 7:
+    case 6:
       return (reader.readString(offset)) as P;
-    case 8:
+    case 7:
       return (reader.readStringOrNull(offset)) as P;
-    case 9:
+    case 8:
       return (_TransactiontypeValueEnumMap[reader.readByteOrNull(offset)] ??
           TransactionType.income) as P;
-    case 10:
+    case 9:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2455,142 +2081,6 @@ extension TransactionQueryFilter
         upper: upper,
         includeUpper: includeUpper,
         epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
-      categoryColorHexEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'categoryColorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
-      categoryColorHexGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'categoryColorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
-      categoryColorHexLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'categoryColorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
-      categoryColorHexBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'categoryColorHex',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
-      categoryColorHexStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'categoryColorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
-      categoryColorHexEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'categoryColorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
-      categoryColorHexContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'categoryColorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
-      categoryColorHexMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'categoryColorHex',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
-      categoryColorHexIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'categoryColorHex',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
-      categoryColorHexIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'categoryColorHex',
-        value: '',
       ));
     });
   }
@@ -3534,20 +3024,6 @@ extension TransactionQuerySortBy
     });
   }
 
-  QueryBuilder<Transaction, Transaction, QAfterSortBy>
-      sortByCategoryColorHex() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'categoryColorHex', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterSortBy>
-      sortByCategoryColorHexDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'categoryColorHex', Sort.desc);
-    });
-  }
-
   QueryBuilder<Transaction, Transaction, QAfterSortBy> sortByCategoryIcon() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'categoryIcon', Sort.asc);
@@ -3672,20 +3148,6 @@ extension TransactionQuerySortThenBy
   QueryBuilder<Transaction, Transaction, QAfterSortBy> thenByAmountDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'amount', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterSortBy>
-      thenByCategoryColorHex() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'categoryColorHex', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Transaction, Transaction, QAfterSortBy>
-      thenByCategoryColorHexDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'categoryColorHex', Sort.desc);
     });
   }
 
@@ -3822,14 +3284,6 @@ extension TransactionQueryWhereDistinct
     });
   }
 
-  QueryBuilder<Transaction, Transaction, QDistinct> distinctByCategoryColorHex(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'categoryColorHex',
-          caseSensitive: caseSensitive);
-    });
-  }
-
   QueryBuilder<Transaction, Transaction, QDistinct> distinctByCategoryIcon(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -3902,13 +3356,6 @@ extension TransactionQueryProperty
   QueryBuilder<Transaction, double, QQueryOperations> amountProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'amount');
-    });
-  }
-
-  QueryBuilder<Transaction, String, QQueryOperations>
-      categoryColorHexProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'categoryColorHex');
     });
   }
 

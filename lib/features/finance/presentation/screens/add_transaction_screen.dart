@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/finance_model.dart';
 import '../../../../data/providers/finance_provider.dart';
 import 'add_finance_category_screen.dart';
@@ -114,7 +115,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 children: [
                   ...categories.map((cat) {
                     final isSelected = _selectedCategory?.id == cat.id;
-                    final catColor = ColorHelper.fromHex(cat.colorHex);
                     return GestureDetector(
                       onTap: () =>
                           setState(() => _selectedCategory = cat),
@@ -124,11 +124,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                             horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? catColor.withOpacity(0.15)
+                              ? AppColors.primary.withOpacity(0.15)
                               : theme.inputDecorationTheme.fillColor,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isSelected ? catColor : Colors.transparent,
+                            color: isSelected ? AppColors.primary : Colors.transparent,
                             width: 2,
                           ),
                         ),
@@ -138,7 +138,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                             CategoryIcon(
                               icon: cat.icon,
                               size: 18,
-                              color: isSelected ? catColor : null,
+                              color: isSelected ? AppColors.primary : null,
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -147,7 +147,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                                 fontWeight: isSelected
                                     ? FontWeight.w600
                                     : FontWeight.w400,
-                                color: isSelected ? catColor : null,
+                                color: isSelected ? AppColors.primary : null,
                               ),
                             ),
                           ],
@@ -210,8 +210,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               data: (wallets) => Row(
                 children: wallets.map((wallet) {
                   final isSelected = _selectedWallet?.id == wallet.id;
-                  final walletColor =
-                  ColorHelper.fromHex(wallet.colorHex);
                   return Padding(
                     padding: const EdgeInsets.only(right: 10),
                     child: GestureDetector(
@@ -223,12 +221,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                             horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? walletColor.withOpacity(0.15)
+                              ? AppColors.primary.withOpacity(0.15)
                               : theme.inputDecorationTheme.fillColor,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color:
-                            isSelected ? walletColor : Colors.transparent,
+                            isSelected ? AppColors.primary : Colors.transparent,
                             width: 2,
                           ),
                         ),
@@ -237,7 +235,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                             CategoryIcon(
                               icon: wallet.icon,
                               size: 22,
-                              color: isSelected ? walletColor : null,
+                              color: isSelected ? AppColors.primary : null,
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -247,7 +245,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                                 fontWeight: isSelected
                                     ? FontWeight.w600
                                     : FontWeight.w400,
-                                color: isSelected ? walletColor : null,
+                                color: isSelected ? AppColors.primary : null,
                               ),
                             ),
                             Text(
@@ -310,22 +308,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             const SizedBox(height: 32),
 
             // Save button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                  _type == TransactionType.income
-                      ? AppColors.income
-                      : AppColors.expense,
-                ),
-                child: Text(
-                  'Simpan Transaksi',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 16),
-                ),
-              ),
+            GlowButton(
+              label: 'Simpan Transaksi',
+              onPressed: _save,
             ),
           ],
         ),
@@ -363,7 +348,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       ..type = _type
       ..categoryName = _selectedCategory!.name
       ..categoryIcon = _selectedCategory!.icon
-      ..categoryColorHex = _selectedCategory!.colorHex
       ..walletName = _selectedWallet!.name
       ..note = _noteController.text.trim()
       ..date = _date;

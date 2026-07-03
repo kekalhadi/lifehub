@@ -36,9 +36,7 @@ class NoteCategoryCustom {
 
   late String name;
 
-  late String colorHex; // Hex color code dari preset palette
-
-  bool isDefault = false; // true untuk 'Umum' (tidak bisa dihapus, bisa diubah)
+  bool isDefault = false;
 
   late DateTime createdAt;
 }

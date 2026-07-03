@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/finance_model.dart';
 import '../../../../data/providers/finance_provider.dart';
 import 'add_finance_category_screen.dart';
@@ -101,11 +102,10 @@ class _CategoryList extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           itemCount: categories.length,
           separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (_, index) {
-            final cat = categories[index];
-            final color = ColorHelper.fromHex(cat.colorHex);
-            return _CategoryTile(category: cat, color: color);
-          },
+            itemBuilder: (_, index) {
+              final cat = categories[index];
+              return _CategoryTile(category: cat);
+            },
         );
       },
     );
@@ -114,35 +114,28 @@ class _CategoryList extends ConsumerWidget {
 
 class _CategoryTile extends StatelessWidget {
   final FinanceCategory category;
-  final Color color;
 
-  const _CategoryTile({required this.category, required this.color});
+  const _CategoryTile({required this.category});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(14),
-      ),
       child: Row(
         children: [
-          // Icon
           Container(
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: theme.inputDecorationTheme.fillColor,
               borderRadius: BorderRadius.circular(12),
             ),
             alignment: Alignment.center,
-            child: CategoryIcon(icon: category.icon, size: 22, color: color),
+            child: CategoryIcon(icon: category.icon, size: 22),
           ),
           const SizedBox(width: 12),
-          // Name + badge
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,7 +159,6 @@ class _CategoryTile extends StatelessWidget {
               ],
             ),
           ),
-          // Budget badge
           if (category.type == TransactionType.expense &&
               category.budgetLimit != null)
             Container(
@@ -185,7 +177,6 @@ class _CategoryTile extends StatelessWidget {
                 ),
               ),
             ),
-          // Edit
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 20),
             tooltip: 'Edit',

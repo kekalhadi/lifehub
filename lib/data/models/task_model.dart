@@ -43,8 +43,6 @@ class Project {
 
   String description = '';
 
-  late String colorHex;
-
   late String icon;
 
   late DateTime createdAt;

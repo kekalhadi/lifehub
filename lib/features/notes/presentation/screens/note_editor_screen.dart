@@ -140,12 +140,12 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                 const SizedBox(height: 10),
                 Row(
                   children: kMoods.map((m) {
-                    final isSelected = _mood == m['key'];
+                    final isSelected = _mood == m.key;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: GestureDetector(
                         onTap: () => setState(() {
-                          _mood = m['key'];
+                          _mood = m.key;
                           _hasChanges = true;
                         }),
                         child: AnimatedContainer(
@@ -154,22 +154,25 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                               horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? AppColors.noteJournal.withOpacity(0.15)
+                                ? AppColors.secondaryLight
                                 : theme.inputDecorationTheme.fillColor,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isSelected
-                                  ? AppColors.noteJournal
+                                  ? AppColors.secondary
                                   : Colors.transparent,
                               width: 2,
                             ),
                           ),
                           child: Column(
                             children: [
-                              Text(m['emoji']!,
-                                  style: const TextStyle(fontSize: 22)),
+                              Icon(m.icon,
+                                  size: 22,
+                                  color: isSelected
+                                      ? AppColors.secondary
+                                      : AppColors.iconColor),
                               const SizedBox(height: 2),
-                              Text(m['label']!,
+                              Text(m.label,
                                   style: theme.textTheme.bodyMedium
                                       ?.copyWith(fontSize: 10)),
                             ],

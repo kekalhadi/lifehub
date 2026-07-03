@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/task_model.dart';
 import '../../../../data/providers/tasks_provider.dart';
 import 'add_task_screen.dart';
@@ -13,7 +14,6 @@ class KanbanScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final title = project?.title ?? 'Kanban Board';
 
     return Scaffold(
@@ -240,23 +240,10 @@ class _KanbanCard extends ConsumerWidget {
         MaterialPageRoute(builder: (_) => AddTaskScreen(task: task)),
       ),
       onLongPress: () => _showStatusPicker(context, ref),
-      child: Container(
+      child: GlassCard(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color,
-          borderRadius: BorderRadius.circular(10),
-          border: Border(
-            left: BorderSide(color: priorityColor, width: 3),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+        radius: 10,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

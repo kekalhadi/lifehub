@@ -12,14 +12,12 @@ class FinanceCategory {
 
   late String name;
 
-  late String icon; // emoji or icon name
-
-  late String colorHex;
+  late String icon;
 
   @enumerated
   late TransactionType type;
 
-  double? budgetLimit; // monthly budget for expense categories
+  double? budgetLimit;
 
   bool isDefault = false;
 }
@@ -31,8 +29,6 @@ class Wallet {
   late String name;
 
   late String icon;
-
-  late String colorHex;
 
   @enumerated
   late WalletType type;
@@ -52,8 +48,6 @@ class Transaction {
   late String categoryName;
 
   late String categoryIcon;
-
-  late String categoryColorHex;
 
   late String walletName;
 

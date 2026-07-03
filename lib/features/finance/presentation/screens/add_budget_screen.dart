@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/finance_model.dart';
 import '../../../../data/providers/finance_provider.dart';
 import 'add_finance_category_screen.dart';
@@ -97,11 +98,9 @@ class _AddBudgetScreenState extends ConsumerState<AddBudgetScreen> {
                     children: [
                       ...available.map((cat) {
                         final isSelected = _selectedCategory?.id == cat.id;
-                        final catColor = ColorHelper.fromHex(cat.colorHex);
                         return _CategoryChip(
                           category: cat,
                           isSelected: isSelected,
-                          color: catColor,
                           onTap: () =>
                               setState(() => _selectedCategory = cat),
                         );
@@ -169,19 +168,9 @@ class _AddBudgetScreenState extends ConsumerState<AddBudgetScreen> {
             const SizedBox(height: 32),
 
             // ===== Save =====
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.expense,
-                ),
-                child: Text(
-                  _isEditing ? 'Simpan Perubahan' : 'Buat Anggaran',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 16),
-                ),
-              ),
+            GlowButton(
+              label: _isEditing ? 'Simpan Perubahan' : 'Buat Anggaran',
+              onPressed: _save,
             ),
           ],
         ),
@@ -190,25 +179,22 @@ class _AddBudgetScreenState extends ConsumerState<AddBudgetScreen> {
   }
 
   Widget _readOnlyCategoryChip(ThemeData theme, BudgetStatus budget) {
-    final catColor = ColorHelper.fromHex(budget.categoryColorHex);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: catColor.withOpacity(0.12),
+        color: theme.inputDecorationTheme.fillColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: catColor, width: 2),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.5), width: 2),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CategoryIcon(
-              icon: budget.categoryIcon, size: 20, color: catColor),
+          CategoryIcon(icon: budget.categoryIcon, size: 20),
           const SizedBox(width: 8),
           Text(
             budget.categoryName,
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: catColor,
             ),
           ),
         ],
@@ -299,13 +285,11 @@ class _AddBudgetScreenState extends ConsumerState<AddBudgetScreen> {
 class _CategoryChip extends StatelessWidget {
   final FinanceCategory category;
   final bool isSelected;
-  final Color color;
   final VoidCallback onTap;
 
   const _CategoryChip({
     required this.category,
     required this.isSelected,
-    required this.color,
     required this.onTap,
   });
 
@@ -319,11 +303,11 @@ class _CategoryChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? color.withOpacity(0.15)
+              ? AppColors.primary.withOpacity(0.15)
               : theme.inputDecorationTheme.fillColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? color : Colors.transparent,
+            color: isSelected ? AppColors.primary : Colors.transparent,
             width: 2,
           ),
         ),
@@ -333,14 +317,14 @@ class _CategoryChip extends StatelessWidget {
             CategoryIcon(
                 icon: category.icon,
                 size: 18,
-                color: isSelected ? color : null),
+                color: isSelected ? AppColors.primary : null),
             const SizedBox(width: 6),
             Text(
               category.name,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight:
                     isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected ? color : null,
+                color: isSelected ? AppColors.primary : null,
               ),
             ),
           ],

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/note_model.dart';
 import '../../../../data/providers/notes_provider.dart';
 import 'add_category_screen.dart';
@@ -28,7 +28,12 @@ class CategoryManagementScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('🗂️', style: TextStyle(fontSize: 64)),
+                  IconBox(
+                    icon: Icons.category_outlined,
+                    size: 72,
+                    iconSize: 36,
+                    radius: 20,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Belum ada kategori\nTap + untuk buat kategori',
@@ -52,8 +57,7 @@ class CategoryManagementScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (_, index) {
               final cat = sorted[index];
-              final color = ColorHelper.fromHex(cat.colorHex);
-              return _CategoryTile(category: cat, color: color);
+              return _CategoryTile(category: cat);
             },
           );
         },
@@ -72,36 +76,17 @@ class CategoryManagementScreen extends ConsumerWidget {
 
 class _CategoryTile extends ConsumerWidget {
   final NoteCategoryCustom category;
-  final Color color;
 
-  const _CategoryTile({required this.category, required this.color});
+  const _CategoryTile({required this.category});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(14),
-        border: Border(
-          left: BorderSide(color: color, width: 4),
-        ),
-      ),
       child: Row(
         children: [
-          // Color dot
-          Container(
-            width: 14,
-            height: 14,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Name + badge
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,7 +113,6 @@ class _CategoryTile extends ConsumerWidget {
               ],
             ),
           ),
-          // Edit
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 20),
             tooltip: 'Edit',
@@ -141,7 +125,6 @@ class _CategoryTile extends ConsumerWidget {
               );
             },
           ),
-          // Delete (hanya untuk non-default)
           if (!category.isDefault)
             IconButton(
               icon: const Icon(Icons.delete_outline,

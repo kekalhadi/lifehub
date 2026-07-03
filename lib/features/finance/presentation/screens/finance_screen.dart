@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/finance_model.dart';
 import '../../../../data/providers/finance_provider.dart';
 import 'add_transaction_screen.dart';
@@ -45,8 +46,6 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Keuangan'),
@@ -174,13 +173,9 @@ class _TransactionsTabState extends ConsumerState<_TransactionsTab> {
         summaryAsync.when(
           loading: () => const SizedBox(height: 70),
           error: (_, __) => const SizedBox.shrink(),
-          data: (summary) => Container(
+          data: (summary) => GlassCard(
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.cardTheme.color,
-              borderRadius: BorderRadius.circular(16),
-            ),
             child: Row(
               children: [
                 Expanded(
@@ -252,7 +247,6 @@ class _TransactionCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isIncome = transaction.type == TransactionType.income;
     final amountColor = isIncome ? AppColors.income : AppColors.expense;
-    final catColor = ColorHelper.fromHex(transaction.categoryColorHex);
 
     return Dismissible(
       key: ValueKey(transaction.id),
@@ -267,27 +261,16 @@ class _TransactionCard extends StatelessWidget {
         ),
         child: const Icon(Icons.delete_outline, color: AppColors.danger),
       ),
-      child: Container(
+      child: GlassCard(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color,
-          borderRadius: BorderRadius.circular(14),
-        ),
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: catColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: CategoryIcon(
-                icon: transaction.categoryIcon,
-                size: 22,
-                color: catColor,
-              ),
+            IconBox(
+              size: 44,
+              radius: 12,
+              icon: tryParseIconData(transaction.categoryIcon) ??
+                  Icons.category,
+              iconSize: 22,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -436,25 +419,22 @@ class _BudgetCard extends StatelessWidget {
         : budget.isNearLimit
         ? AppColors.warning
         : AppColors.secondary;
-    final catColor = ColorHelper.fromHex(budget.categoryColorHex);
 
     return GestureDetector(
       onTap: onEdit,
-      child: Container(
+      child: GlassCard(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color,
-          borderRadius: BorderRadius.circular(16),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                CategoryIcon(
-                  icon: budget.categoryIcon,
-                  size: 28,
-                  color: catColor,
+                IconBox(
+                  icon: tryParseIconData(budget.categoryIcon) ??
+                      Icons.category,
+                  size: 48,
+                  iconSize: 24,
+                  radius: 14,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -512,7 +492,7 @@ class _BudgetCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: budget.percentage,
-                backgroundColor: catColor.withOpacity(0.1),
+                backgroundColor: color.withOpacity(0.1),
                 valueColor: AlwaysStoppedAnimation<Color>(color),
                 minHeight: 8,
               ),
@@ -560,12 +540,9 @@ class _StatisticsTab extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Pie Chart
-              Container(
+              GlassCard(
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: theme.cardTheme.color,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                radius: 20,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -638,12 +615,9 @@ class _StatisticsTab extends ConsumerWidget {
               const SizedBox(height: 16),
 
               // Category breakdown
-              Container(
+              GlassCard(
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: theme.cardTheme.color,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                radius: 20,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

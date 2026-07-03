@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/task_model.dart';
 import '../../../../data/providers/tasks_provider.dart';
 
@@ -207,13 +208,9 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
 
             const SizedBox(height: 32),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _save,
-                child: Text(isEdit ? 'Simpan Perubahan' : 'Tambah Tugas',
-                    style: const TextStyle(fontSize: 16)),
-              ),
+            GlowButton(
+              label: isEdit ? 'Simpan Perubahan' : 'Tambah Tugas',
+              onPressed: _save,
             ),
 
             if (isEdit) ...[

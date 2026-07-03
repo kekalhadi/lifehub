@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/category_icons.dart';
-import '../../../../core/utils/helpers.dart';
-import '../../../../core/widgets/category_picker.dart';
 import '../../../../data/models/finance_model.dart';
 import '../../../../data/providers/finance_provider.dart';
 
@@ -31,7 +29,6 @@ class _AddFinanceCategoryScreenState
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late String _selectedIcon;
-  late String _selectedColorHex;
   late TransactionType _type;
 
   @override
@@ -41,12 +38,10 @@ class _AddFinanceCategoryScreenState
     if (cat != null) {
       _nameController = TextEditingController(text: cat.name);
       _selectedIcon = cat.icon;
-      _selectedColorHex = cat.colorHex;
       _type = cat.type;
     } else {
       _nameController = TextEditingController();
       _selectedIcon = 'category';
-      _selectedColorHex = '#6366F1';
       _type = widget.type;
     }
   }
@@ -64,7 +59,6 @@ class _AddFinanceCategoryScreenState
       ..id = widget.categoryToEdit?.id ?? Isar.autoIncrement
       ..name = _nameController.text.trim()
       ..icon = _selectedIcon
-      ..colorHex = _selectedColorHex
       ..type = _type
       ..budgetLimit = widget.categoryToEdit?.budgetLimit
       ..isDefault = widget.categoryToEdit?.isDefault ?? false;
@@ -128,7 +122,6 @@ class _AddFinanceCategoryScreenState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isEditing = widget.categoryToEdit != null;
-    final previewColor = ColorHelper.fromHex(_selectedColorHex);
 
     return Scaffold(
       appBar: AppBar(
@@ -149,27 +142,26 @@ class _AddFinanceCategoryScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ===== Preview =====
               Center(
                 child: Container(
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    color: previewColor.withOpacity(0.15),
+                    color: theme.inputDecorationTheme.fillColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: previewColor, width: 2),
+                    border: Border.all(
+                      color: theme.dividerColor.withOpacity(0.5), width: 2),
                   ),
                   alignment: Alignment.center,
                   child: CategoryIcon(
                     icon: _selectedIcon,
                     size: 32,
-                    color: previewColor,
+                    color: theme.iconTheme.color,
                   ),
                 ),
               ),
               const SizedBox(height: 24),
 
-              // ===== Name =====
               Text('Nama Kategori', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
               TextFormField(
@@ -187,7 +179,6 @@ class _AddFinanceCategoryScreenState
               ),
               const SizedBox(height: 24),
 
-              // ===== Type (hanya saat buat) =====
               if (!isEditing) ...[
                 Text('Tipe', style: theme.textTheme.labelLarge),
                 const SizedBox(height: 8),
@@ -225,23 +216,12 @@ class _AddFinanceCategoryScreenState
                 const SizedBox(height: 24),
               ],
 
-              // ===== Icon picker =====
               Text('Ikon', style: theme.textTheme.labelLarge),
               const SizedBox(height: 12),
               IconPickerGrid(
                 selectedIcon: _selectedIcon,
                 onIconSelected: (key) => setState(() => _selectedIcon = key),
-                color: previewColor,
-              ),
-              const SizedBox(height: 24),
-
-              // ===== Color picker =====
-              Text('Warna', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 12),
-              CategoryColorPicker(
-                selectedColorHex: _selectedColorHex,
-                onColorSelected: (hex) =>
-                    setState(() => _selectedColorHex = hex),
+                color: AppColors.primary,
               ),
             ],
           ),

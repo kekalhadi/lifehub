@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/glass.dart';
 import '../../../../core/widgets/category_picker.dart';
 import '../../../../data/models/note_model.dart';
 import '../../../../data/providers/notes_provider.dart';
@@ -292,7 +293,6 @@ class _NoteListCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final categoryMap = ref.watch(categoryMapProvider).valueOrNull ?? {};
     final category = resolveCategory(note.categoryId, categoryMap);
-    final catColor = ColorHelper.fromHex(category.colorHex);
 
     return Dismissible(
       key: ValueKey(note.id),
@@ -312,15 +312,8 @@ class _NoteListCard extends ConsumerWidget {
       },
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
+        child: GlassCardPro(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.cardTheme.color,
-            borderRadius: BorderRadius.circular(16),
-            border: Border(
-              left: BorderSide(color: catColor, width: 4),
-            ),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -331,7 +324,7 @@ class _NoteListCard extends ConsumerWidget {
                     const SizedBox(width: 4),
                   ],
                   if (note.isJournal && note.mood != null) ...[
-                    Text(moodEmoji(note.mood), style: const TextStyle(fontSize: 14)),
+                    Icon(moodIcon(note.mood), size: 14, color: AppColors.primary),
                     const SizedBox(width: 6),
                   ],
                   Expanded(
@@ -364,30 +357,19 @@ class _NoteListCard extends ConsumerWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  // Category badge
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: catColor.withOpacity(0.1),
+                      color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: catColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
                         Text(
                           category.name,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontSize: 11,
-                            color: catColor,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -500,7 +482,12 @@ class _EmptyNotes extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(hasFilters ? '🔍' : '✍️', style: const TextStyle(fontSize: 64)),
+          IconBox(
+            icon: hasFilters ? Icons.search_off_rounded : Icons.edit_note_rounded,
+            size: 72,
+            iconSize: 36,
+            radius: 20,
+          ),
           const SizedBox(height: 16),
           Text(
             hasFilters

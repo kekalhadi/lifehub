@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/glass.dart';
 import '../../../../data/providers/finance_provider.dart';
 import '../../../../data/providers/notes_provider.dart';
 import '../../../../data/providers/tasks_provider.dart';
-import '../../../../data/models/note_model.dart';
-import '../../../../data/models/finance_model.dart';
 import '../../../../data/models/task_model.dart';
+import 'dart:ui';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -21,39 +22,57 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // Header
-          SliverToBoxAdapter(
-            child: _DashboardHeader(greeting: greeting, now: now),
-          ),
-
-          // Financial Summary Card
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: _FinanceSummaryCard(),
+      body: Stack(
+        children: [
+          // Background paling belakang
+          Positioned.fill(
+            child: Image.asset(
+              'lib/resources/bg-1.jpg',
+              fit: BoxFit.cover,
             ),
           ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-          // Budget Alerts
-          SliverToBoxAdapter(
-            child: _BudgetAlertSection(),
+          // Overlay gelap di atas gambar
+          Positioned.fill(
+            child: Container(
+              color: AppColors.nearBlack.withOpacity(0.6),
+            ),
           ),
+          // Konten asli
+          CustomScrollView(
+            slivers: [
+              // Header
+              SliverToBoxAdapter(
+                child: _DashboardHeader(greeting: greeting, now: now),
+              ),
 
-          // Today's Tasks
-          SliverToBoxAdapter(
-            child: _TodayTasksSection(),
+              // Financial Summary Card
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  child: _FinanceSummaryCard(),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+              // Budget Alerts
+              SliverToBoxAdapter(
+                child: _BudgetAlertSection(),
+              ),
+
+              // Today's Tasks
+              SliverToBoxAdapter(
+                child: _TodayTasksSection(),
+              ),
+
+              // Recent Notes
+              SliverToBoxAdapter(
+                child: _RecentNotesSection(),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
           ),
-
-          // Recent Notes
-          SliverToBoxAdapter(
-            child: _RecentNotesSection(),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
     );
@@ -61,10 +80,10 @@ class DashboardScreen extends ConsumerWidget {
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 11) return 'Selamat Pagi ☀️';
-    if (hour < 15) return 'Selamat Siang 🌤️';
-    if (hour < 18) return 'Selamat Sore 🌅';
-    return 'Selamat Malam 🌙';
+    if (hour < 11) return 'Selamat Pagi';
+    if (hour < 15) return 'Selamat Siang';
+    if (hour < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
   }
 }
 
@@ -81,15 +100,10 @@ class _DashboardHeader extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(
         20, MediaQuery.of(context).padding.top + 20, 20, 24,
       ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primary,
-            AppColors.primary.withOpacity(0.8),
-            const Color(0xFF818CF8),
-          ],
+      decoration: const BoxDecoration(
+        // gradient/background sendiri dihapus karena sudah pakai bg global dari Scaffold
+        border: Border(
+          bottom: BorderSide(color: AppColors.glassBorderDark, width: 1),
         ),
       ),
       child: Column(
@@ -122,11 +136,12 @@ class _DashboardHeader extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  shape: BoxShape.circle,
+                  color: AppColors.glassDark,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.glassBorderDark, width: 1),
                 ),
                 child: const Icon(Icons.notifications_outlined,
-                    color: Colors.white, size: 22),
+                    color: AppColors.gray400, size: 22),
               ),
             ],
           ),
@@ -144,94 +159,150 @@ class _FinanceSummaryCard extends ConsumerWidget {
 
     return Transform.translate(
       offset: const Offset(0, -20),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.15),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              // Transparan dengan sedikit tint putih agar terasa "kaca"
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.18),
+                width: 1,
+              ),
+              boxShadow: [
+                // Outer glow lembut
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.08),
+                  blurRadius: 24,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-          ],
-        ),
-        child: summaryAsync.when(
-          loading: () => const Center(
-            child: SizedBox(
-              height: 60,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-          error: (e, _) => const Text('Gagal memuat data'),
-          data: (summary) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 20),
-                    child: Text(
-                      'Ringkasan Bulan Ini',
-                      style: theme.textTheme.labelLarge,
-                    ),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.only(top: 20),
-                    child: Text(
-                      DateFormat('MMM yyyy', 'id_ID').format(DateTime.now()),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
+            child: Stack(
+              children: [
+                // Inner glow: gradient tipis dari tepi ke dalam
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.white.withOpacity(0.10),
+                          Colors.white.withOpacity(0.0),
+                          Colors.white.withOpacity(0.05),
+                        ],
+                        stops: const [0.0, 0.5, 1.0],
                       ),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: _FinanceStat(
-                      label: 'Pemasukan',
-                      amount: summary.totalIncome,
-                      color: AppColors.income,
-                      icon: Icons.arrow_downward_rounded,
+                ),
+                // Inner glow tambahan di edge atas (highlight kaca)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 1.5,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.0),
+                          Colors.white.withOpacity(0.5),
+                          Colors.white.withOpacity(0.0),
+                        ],
+                      ),
                     ),
                   ),
-                  Container(
-                    width: 1, height: 48,
-                    color: const Color(0xFFE2E8F0),
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  Expanded(
-                    child: _FinanceStat(
-                      label: 'Pengeluaran',
-                      amount: summary.totalExpense,
-                      color: AppColors.expense,
-                      icon: Icons.arrow_upward_rounded,
+                ),
+                // Konten asli
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: summaryAsync.when(
+                    loading: () => const Center(
+                      child: SizedBox(
+                        height: 60,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    error: (e, _) => Text(
+                      'Gagal memuat data',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
+                    data: (summary) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Ringkasan Bulan Ini',
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: Colors.white.withOpacity(0.9),
+                              ),
+                            ),
+                            Text(
+                              DateFormat('MMM yyyy', 'id_ID').format(DateTime.now()),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _FinanceStat(
+                                label: 'Pemasukan',
+                                amount: summary.totalIncome,
+                                color: AppColors.income,
+                                icon: Icons.arrow_downward_rounded,
+                              ),
+                            ),
+                            Container(
+                              width: 1, height: 48,
+                              color: Colors.white.withOpacity(0.15),
+                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                            ),
+                            Expanded(
+                              child: _FinanceStat(
+                                label: 'Pengeluaran',
+                                amount: summary.totalExpense,
+                                color: AppColors.expense,
+                                icon: Icons.arrow_upward_rounded,
+                              ),
+                            ),
+                            Container(
+                              width: 1, height: 48,
+                              color: Colors.white.withOpacity(0.15),
+                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                            ),
+                            Expanded(
+                              child: _FinanceStat(
+                                label: 'Saldo',
+                                amount: summary.balance,
+                                color: summary.balance >= 0
+                                    ? AppColors.primary
+                                    : AppColors.danger,
+                                icon: Icons.account_balance_wallet_outlined,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  Container(
-                    width: 1, height: 48,
-                    color: const Color(0xFFE2E8F0),
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  Expanded(
-                    child: _FinanceStat(
-                      label: 'Saldo',
-                      amount: summary.balance,
-                      color: summary.balance >= 0
-                          ? AppColors.primary
-                          : AppColors.danger,
-                      icon: Icons.account_balance_wallet_outlined,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -333,16 +404,11 @@ class _BudgetAlertCard extends StatelessWidget {
     final theme = Theme.of(context);
     final color = budget.isOverBudget ? AppColors.danger : AppColors.warning;
 
-    return Container(
+    return GlassCardPro(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
       child: Row(
         children: [
-          Text(budget.categoryIcon, style: const TextStyle(fontSize: 24)),
+          CategoryIcon(icon: budget.categoryIcon, size: 24, color: color),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -408,7 +474,7 @@ class _TodayTasksSection extends ConsumerWidget {
             data: (tasks) {
               if (tasks.isEmpty) {
                 return _EmptyState(
-                  emoji: '✅',
+                  icon: Icons.check_circle_outline_rounded,
                   message: 'Tidak ada tugas untuk hari ini.',
                 );
               }
@@ -447,13 +513,8 @@ class _DashboardTaskCard extends StatelessWidget {
     final theme = Theme.of(context);
     final priorityColor = _priorityColor(task.priority);
 
-    return Container(
+    return GlassCardPro(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.dividerColor),
-      ),
       child: Row(
         children: [
           GestureDetector(
@@ -534,7 +595,6 @@ class _DashboardTaskCard extends StatelessWidget {
 class _RecentNotesSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final notesAsync = ref.watch(recentNotesProvider);
 
     return Padding(
@@ -554,7 +614,7 @@ class _RecentNotesSection extends ConsumerWidget {
             data: (notes) {
               if (notes.isEmpty) {
                 return _EmptyState(
-                  emoji: '📝',
+                  icon: Icons.sticky_note_2_outlined,
                   message: 'Belum ada catatan. Mulai tulis sekarang!',
                 );
               }
@@ -575,56 +635,54 @@ class _RecentNotesSection extends ConsumerWidget {
   }
 }
 
-class _NoteCard extends ConsumerWidget {
+class _NoteCard extends StatelessWidget {
   final note;
 
   const _NoteCard({required this.note});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final categoryMap = ref.watch(categoryMapProvider).valueOrNull ?? {};
-    final category = resolveCategory(note.categoryId, categoryMap);
-    final color = ColorHelper.fromHex(category.colorHex);
 
-    return Container(
-      width: 160,
+    return GlassCardPro(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (note.isJournal && note.mood != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(moodEmoji(note.mood), style: const TextStyle(fontSize: 18)),
-            ),
-          Text(
-            note.title.isEmpty ? 'Tanpa Judul' : note.title,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: color, fontSize: 13,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Text(
-              note.content,
-              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11),
-              maxLines: 3,
+      child: SizedBox(
+        width: 160,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (note.isJournal && note.mood != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Icon(moodIcon(note.mood), size: 18, color: AppColors.primary),
+              ),
+            Text(
+              note.title.isEmpty ? 'Tanpa Judul' : note.title,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: Colors.white.withOpacity(0.9), fontSize: 13,
+              ),
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-          ),
-          Text(
-            DateHelper.relativeTime(note.updatedAt),
-            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 10),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Expanded(
+              child: Text(
+                note.content,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontSize: 11, color: Colors.white.withOpacity(0.7),
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text(
+              DateHelper.relativeTime(note.updatedAt),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontSize: 10, color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -662,10 +720,10 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  final String emoji;
+  final IconData icon;
   final String message;
 
-  const _EmptyState({required this.emoji, required this.message});
+  const _EmptyState({required this.icon, required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -675,7 +733,7 @@ class _EmptyState extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 32)),
+          IconBox(icon: icon, size: 48, iconSize: 24),
           const SizedBox(height: 8),
           Text(message,
               style: theme.textTheme.bodyMedium,

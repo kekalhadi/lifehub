@@ -41,7 +41,6 @@ final monthlySummaryProvider = FutureProvider<MonthlySummary>((ref) async {
   double totalIncome = 0;
   double totalExpense = 0;
   final Map<String, double> expenseByCategory = {};
-  final Map<String, String> categoryColors = {};
 
   for (final t in transactions) {
     if (t.type == TransactionType.income) {
@@ -50,7 +49,6 @@ final monthlySummaryProvider = FutureProvider<MonthlySummary>((ref) async {
       totalExpense += t.amount;
       expenseByCategory[t.categoryName] =
           (expenseByCategory[t.categoryName] ?? 0) + t.amount;
-      categoryColors[t.categoryName] = t.categoryColorHex;
     }
   }
 
@@ -58,7 +56,6 @@ final monthlySummaryProvider = FutureProvider<MonthlySummary>((ref) async {
     totalIncome: totalIncome,
     totalExpense: totalExpense,
     expenseByCategory: expenseByCategory,
-    categoryColors: categoryColors,
     transactionCount: transactions.length,
   );
 });
@@ -121,7 +118,6 @@ final budgetStatusProvider = FutureProvider<List<BudgetStatus>>((ref) async {
       categoryId: cat.id,
       categoryName: cat.name,
       categoryIcon: cat.icon,
-      categoryColorHex: cat.colorHex,
       budget: cat.budgetLimit!,
       spent: spent,
     );
@@ -343,7 +339,6 @@ class MonthlySummary {
   final double totalIncome;
   final double totalExpense;
   final Map<String, double> expenseByCategory;
-  final Map<String, String> categoryColors;
   final int transactionCount;
 
   double get balance => totalIncome - totalExpense;
@@ -352,7 +347,6 @@ class MonthlySummary {
     required this.totalIncome,
     required this.totalExpense,
     required this.expenseByCategory,
-    required this.categoryColors,
     required this.transactionCount,
   });
 }
@@ -361,7 +355,6 @@ class BudgetStatus {
   final int categoryId;
   final String categoryName;
   final String categoryIcon;
-  final String categoryColorHex;
   final double budget;
   final double spent;
 
@@ -373,7 +366,6 @@ class BudgetStatus {
     required this.categoryId,
     required this.categoryName,
     required this.categoryIcon,
-    required this.categoryColorHex,
     required this.budget,
     required this.spent,
   });

@@ -1493,33 +1493,28 @@ const ProjectSchema = CollectionSchema(
   name: r'Project',
   id: 3302999628838485849,
   properties: {
-    r'colorHex': PropertySchema(
-      id: 0,
-      name: r'colorHex',
-      type: IsarType.string,
-    ),
     r'createdAt': PropertySchema(
-      id: 1,
+      id: 0,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'description': PropertySchema(
-      id: 2,
+      id: 1,
       name: r'description',
       type: IsarType.string,
     ),
     r'icon': PropertySchema(
-      id: 3,
+      id: 2,
       name: r'icon',
       type: IsarType.string,
     ),
     r'isArchived': PropertySchema(
-      id: 4,
+      id: 3,
       name: r'isArchived',
       type: IsarType.bool,
     ),
     r'title': PropertySchema(
-      id: 5,
+      id: 4,
       name: r'title',
       type: IsarType.string,
     )
@@ -1544,7 +1539,6 @@ int _projectEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
-  bytesCount += 3 + object.colorHex.length * 3;
   bytesCount += 3 + object.description.length * 3;
   bytesCount += 3 + object.icon.length * 3;
   bytesCount += 3 + object.title.length * 3;
@@ -1557,12 +1551,11 @@ void _projectSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.colorHex);
-  writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeString(offsets[2], object.description);
-  writer.writeString(offsets[3], object.icon);
-  writer.writeBool(offsets[4], object.isArchived);
-  writer.writeString(offsets[5], object.title);
+  writer.writeDateTime(offsets[0], object.createdAt);
+  writer.writeString(offsets[1], object.description);
+  writer.writeString(offsets[2], object.icon);
+  writer.writeBool(offsets[3], object.isArchived);
+  writer.writeString(offsets[4], object.title);
 }
 
 Project _projectDeserialize(
@@ -1572,13 +1565,12 @@ Project _projectDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Project();
-  object.colorHex = reader.readString(offsets[0]);
-  object.createdAt = reader.readDateTime(offsets[1]);
-  object.description = reader.readString(offsets[2]);
-  object.icon = reader.readString(offsets[3]);
+  object.createdAt = reader.readDateTime(offsets[0]);
+  object.description = reader.readString(offsets[1]);
+  object.icon = reader.readString(offsets[2]);
   object.id = id;
-  object.isArchived = reader.readBool(offsets[4]);
-  object.title = reader.readString(offsets[5]);
+  object.isArchived = reader.readBool(offsets[3]);
+  object.title = reader.readString(offsets[4]);
   return object;
 }
 
@@ -1590,16 +1582,14 @@ P _projectDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
-    case 1:
       return (reader.readDateTime(offset)) as P;
+    case 1:
+      return (reader.readString(offset)) as P;
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
-    case 4:
       return (reader.readBool(offset)) as P;
-    case 5:
+    case 4:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1695,136 +1685,6 @@ extension ProjectQueryWhere on QueryBuilder<Project, Project, QWhereClause> {
 
 extension ProjectQueryFilter
     on QueryBuilder<Project, Project, QFilterCondition> {
-  QueryBuilder<Project, Project, QAfterFilterCondition> colorHexEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Project, Project, QAfterFilterCondition> colorHexGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Project, Project, QAfterFilterCondition> colorHexLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Project, Project, QAfterFilterCondition> colorHexBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'colorHex',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Project, Project, QAfterFilterCondition> colorHexStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Project, Project, QAfterFilterCondition> colorHexEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Project, Project, QAfterFilterCondition> colorHexContains(
-      String value,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Project, Project, QAfterFilterCondition> colorHexMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'colorHex',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Project, Project, QAfterFilterCondition> colorHexIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'colorHex',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Project, Project, QAfterFilterCondition> colorHexIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'colorHex',
-        value: '',
-      ));
-    });
-  }
-
   QueryBuilder<Project, Project, QAfterFilterCondition> createdAtEqualTo(
       DateTime value) {
     return QueryBuilder.apply(this, (query) {
@@ -2339,18 +2199,6 @@ extension ProjectQueryLinks
     on QueryBuilder<Project, Project, QFilterCondition> {}
 
 extension ProjectQuerySortBy on QueryBuilder<Project, Project, QSortBy> {
-  QueryBuilder<Project, Project, QAfterSortBy> sortByColorHex() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Project, Project, QAfterSortBy> sortByColorHexDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.desc);
-    });
-  }
-
   QueryBuilder<Project, Project, QAfterSortBy> sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -2414,18 +2262,6 @@ extension ProjectQuerySortBy on QueryBuilder<Project, Project, QSortBy> {
 
 extension ProjectQuerySortThenBy
     on QueryBuilder<Project, Project, QSortThenBy> {
-  QueryBuilder<Project, Project, QAfterSortBy> thenByColorHex() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Project, Project, QAfterSortBy> thenByColorHexDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.desc);
-    });
-  }
-
   QueryBuilder<Project, Project, QAfterSortBy> thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -2501,13 +2337,6 @@ extension ProjectQuerySortThenBy
 
 extension ProjectQueryWhereDistinct
     on QueryBuilder<Project, Project, QDistinct> {
-  QueryBuilder<Project, Project, QDistinct> distinctByColorHex(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'colorHex', caseSensitive: caseSensitive);
-    });
-  }
-
   QueryBuilder<Project, Project, QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
@@ -2547,12 +2376,6 @@ extension ProjectQueryProperty
   QueryBuilder<Project, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
-    });
-  }
-
-  QueryBuilder<Project, String, QQueryOperations> colorHexProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'colorHex');
     });
   }
 

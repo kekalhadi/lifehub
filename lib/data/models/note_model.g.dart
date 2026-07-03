@@ -1791,23 +1791,18 @@ const NoteCategoryCustomSchema = CollectionSchema(
   name: r'NoteCategoryCustom',
   id: -9168462690846744082,
   properties: {
-    r'colorHex': PropertySchema(
-      id: 0,
-      name: r'colorHex',
-      type: IsarType.string,
-    ),
     r'createdAt': PropertySchema(
-      id: 1,
+      id: 0,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'isDefault': PropertySchema(
-      id: 2,
+      id: 1,
       name: r'isDefault',
       type: IsarType.bool,
     ),
     r'name': PropertySchema(
-      id: 3,
+      id: 2,
       name: r'name',
       type: IsarType.string,
     )
@@ -1832,7 +1827,6 @@ int _noteCategoryCustomEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
-  bytesCount += 3 + object.colorHex.length * 3;
   bytesCount += 3 + object.name.length * 3;
   return bytesCount;
 }
@@ -1843,10 +1837,9 @@ void _noteCategoryCustomSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.colorHex);
-  writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeBool(offsets[2], object.isDefault);
-  writer.writeString(offsets[3], object.name);
+  writer.writeDateTime(offsets[0], object.createdAt);
+  writer.writeBool(offsets[1], object.isDefault);
+  writer.writeString(offsets[2], object.name);
 }
 
 NoteCategoryCustom _noteCategoryCustomDeserialize(
@@ -1856,11 +1849,10 @@ NoteCategoryCustom _noteCategoryCustomDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = NoteCategoryCustom();
-  object.colorHex = reader.readString(offsets[0]);
-  object.createdAt = reader.readDateTime(offsets[1]);
+  object.createdAt = reader.readDateTime(offsets[0]);
   object.id = id;
-  object.isDefault = reader.readBool(offsets[2]);
-  object.name = reader.readString(offsets[3]);
+  object.isDefault = reader.readBool(offsets[1]);
+  object.name = reader.readString(offsets[2]);
   return object;
 }
 
@@ -1872,12 +1864,10 @@ P _noteCategoryCustomDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
-    case 1:
       return (reader.readDateTime(offset)) as P;
-    case 2:
+    case 1:
       return (reader.readBool(offset)) as P;
-    case 3:
+    case 2:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1980,142 +1970,6 @@ extension NoteCategoryCustomQueryWhere
 
 extension NoteCategoryCustomQueryFilter
     on QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QFilterCondition> {
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterFilterCondition>
-      colorHexEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterFilterCondition>
-      colorHexGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterFilterCondition>
-      colorHexLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterFilterCondition>
-      colorHexBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'colorHex',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterFilterCondition>
-      colorHexStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterFilterCondition>
-      colorHexEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterFilterCondition>
-      colorHexContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'colorHex',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterFilterCondition>
-      colorHexMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'colorHex',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterFilterCondition>
-      colorHexIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'colorHex',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterFilterCondition>
-      colorHexIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'colorHex',
-        value: '',
-      ));
-    });
-  }
-
   QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterFilterCondition>
       createdAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
@@ -2384,20 +2238,6 @@ extension NoteCategoryCustomQueryLinks
 extension NoteCategoryCustomQuerySortBy
     on QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QSortBy> {
   QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterSortBy>
-      sortByColorHex() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.asc);
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterSortBy>
-      sortByColorHexDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.desc);
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterSortBy>
       sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -2442,20 +2282,6 @@ extension NoteCategoryCustomQuerySortBy
 
 extension NoteCategoryCustomQuerySortThenBy
     on QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QSortThenBy> {
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterSortBy>
-      thenByColorHex() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.asc);
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterSortBy>
-      thenByColorHexDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'colorHex', Sort.desc);
-    });
-  }
-
   QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QAfterSortBy>
       thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
@@ -2516,13 +2342,6 @@ extension NoteCategoryCustomQuerySortThenBy
 extension NoteCategoryCustomQueryWhereDistinct
     on QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QDistinct> {
   QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QDistinct>
-      distinctByColorHex({bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'colorHex', caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, NoteCategoryCustom, QDistinct>
       distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
@@ -2549,13 +2368,6 @@ extension NoteCategoryCustomQueryProperty
   QueryBuilder<NoteCategoryCustom, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
-    });
-  }
-
-  QueryBuilder<NoteCategoryCustom, String, QQueryOperations>
-      colorHexProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'colorHex');
     });
   }
 

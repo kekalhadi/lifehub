@@ -50,7 +50,6 @@ Future<void> _migrateNoteCategories(Isar isar) async {
     if (umum == null) {
       final newUmum = NoteCategoryCustom()
         ..name = 'Umum'
-        ..colorHex = '#64748B'
         ..isDefault = true
         ..createdAt = DateTime.now();
       umumId = await isar.noteCategoryCustoms.put(newUmum);
@@ -141,50 +140,42 @@ Future<void> _seedDefaultData(Isar isar) async {
         FinanceCategory()
           ..name = 'Makanan & Minuman'
           ..icon = 'ramen_dining'
-          ..colorHex = '#EF4444'
           ..type = TransactionType.expense
-          ..budgetLimit = 1000000 // satu contoh anggaran
+          ..budgetLimit = 1000000
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Transportasi'
           ..icon = 'directions_car'
-          ..colorHex = '#F59E0B'
           ..type = TransactionType.expense
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Belanja'
           ..icon = 'shopping_cart'
-          ..colorHex = '#8B5CF6'
           ..type = TransactionType.expense
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Hiburan'
           ..icon = 'sports_esports'
-          ..colorHex = '#EC4899'
           ..type = TransactionType.expense
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Kesehatan'
           ..icon = 'medication'
-          ..colorHex = '#10B981'
           ..type = TransactionType.expense
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Pendidikan'
           ..icon = 'menu_book'
-          ..colorHex = '#06B6D4'
           ..type = TransactionType.expense
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Tagihan'
           ..icon = 'receipt_long'
-          ..colorHex = '#64748B'
           ..type = TransactionType.expense
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Lainnya'
           ..icon = 'inventory_2'
-          ..colorHex = '#94A3B8'
           ..type = TransactionType.expense
           ..isDefault = true,
       ];
@@ -192,25 +183,21 @@ Future<void> _seedDefaultData(Isar isar) async {
         FinanceCategory()
           ..name = 'Gaji'
           ..icon = 'work'
-          ..colorHex = '#10B981'
           ..type = TransactionType.income
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Freelance'
           ..icon = 'laptop'
-          ..colorHex = '#6366F1'
           ..type = TransactionType.income
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Investasi'
           ..icon = 'trending_up'
-          ..colorHex = '#F59E0B'
           ..type = TransactionType.income
           ..isDefault = true,
         FinanceCategory()
           ..name = 'Lainnya'
           ..icon = 'savings'
-          ..colorHex = '#10B981'
           ..type = TransactionType.income
           ..isDefault = true,
       ];
@@ -226,19 +213,16 @@ Future<void> _seedDefaultData(Isar isar) async {
         Wallet()
           ..name = 'Uang Tunai'
           ..icon = 'payments'
-          ..colorHex = '#10B981'
           ..type = WalletType.cash
           ..balance = 0,
         Wallet()
           ..name = 'Rekening Bank'
           ..icon = 'account_balance'
-          ..colorHex = '#6366F1'
           ..type = WalletType.bank
           ..balance = 0,
         Wallet()
           ..name = 'E-Wallet'
           ..icon = 'smartphone'
-          ..colorHex = '#F59E0B'
           ..type = WalletType.ewallet
           ..balance = 0,
       ];

@@ -96,14 +96,14 @@ class ColorHelper {
   }
 }
 
-String moodEmoji(String? mood) {
+IconData moodIcon(String? mood) {
   switch (mood) {
-    case 'happy': return '😊';
-    case 'excited': return '🤩';
-    case 'neutral': return '😐';
-    case 'sad': return '😔';
-    case 'stressed': return '😤';
-    default: return '😊';
+    case 'happy': return Icons.sentiment_satisfied_rounded;
+    case 'excited': return Icons.sentiment_very_satisfied_rounded;
+    case 'neutral': return Icons.sentiment_neutral_rounded;
+    case 'sad': return Icons.sentiment_dissatisfied_rounded;
+    case 'stressed': return Icons.sentiment_very_dissatisfied_rounded;
+    default: return Icons.sentiment_satisfied_rounded;
   }
 }
 
@@ -118,10 +118,18 @@ String moodLabel(String? mood) {
   }
 }
 
-const List<Map<String, String>> kMoods = [
-  {'key': 'excited', 'emoji': '🤩', 'label': 'Semangat'},
-  {'key': 'happy', 'emoji': '😊', 'label': 'Bahagia'},
-  {'key': 'neutral', 'emoji': '😐', 'label': 'Biasa'},
-  {'key': 'sad', 'emoji': '😔', 'label': 'Sedih'},
-  {'key': 'stressed', 'emoji': '😤', 'label': 'Stres'},
+class Mood {
+  final String key;
+  final IconData icon;
+  final String label;
+
+  const Mood({required this.key, required this.icon, required this.label});
+}
+
+const List<Mood> kMoods = [
+  Mood(key: 'excited', icon: Icons.sentiment_very_satisfied_rounded, label: 'Semangat'),
+  Mood(key: 'happy', icon: Icons.sentiment_satisfied_rounded, label: 'Bahagia'),
+  Mood(key: 'neutral', icon: Icons.sentiment_neutral_rounded, label: 'Biasa'),
+  Mood(key: 'sad', icon: Icons.sentiment_dissatisfied_rounded, label: 'Sedih'),
+  Mood(key: 'stressed', icon: Icons.sentiment_very_dissatisfied_rounded, label: 'Stres'),
 ];
