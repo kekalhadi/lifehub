@@ -21,94 +21,125 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
   int? _draggedTaskId;
   TaskStatus? _draggedFromStatus;
 
+  // NEW: kolom mana yang sedang "aktif" (terkunci untuk scroll internal).
+  // Hanya satu kolom yang bisa aktif dalam satu waktu.
+  TaskStatus? _activeScrollStatus;
+
+  void _activateColumn(TaskStatus status) {
+    setState(() {
+      _activeScrollStatus = _activeScrollStatus == status ? null : status;
+    });
+  }
+
+  void _deactivateAll() {
+    if (_activeScrollStatus != null) {
+      setState(() => _activeScrollStatus = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = widget.project?.title ?? 'Kanban Board';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => AddTaskScreen(projectId: widget.project?.id),
+    // NEW: GestureDetector terluar — tap di area kosong (header/app bar,
+    // celah antar kolom, dsb) akan melepas status aktif kolom manapun.
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: _deactivateAll,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(title),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => AddTaskScreen(projectId: widget.project?.id),
+                ),
               ),
             ),
+          ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _KanbanColumn(
+                status: TaskStatus.todo,
+                label: 'To Do',
+                color: AppColors.primary,
+                icon: Icons.radio_button_unchecked,
+                projectId: widget.project?.id,
+                draggedTaskId: _draggedTaskId,
+                draggedFromStatus: _draggedFromStatus,
+                isActive: _activeScrollStatus == TaskStatus.todo,
+                onActivate: () => _activateColumn(TaskStatus.todo),
+                onDragStarted: (taskId) {
+                  setState(() {
+                    _draggedTaskId = taskId;
+                    _draggedFromStatus = TaskStatus.todo;
+                  });
+                },
+                onDragEnded: () {
+                  setState(() {
+                    _draggedTaskId = null;
+                    _draggedFromStatus = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              _KanbanColumn(
+                status: TaskStatus.inProgress,
+                label: 'In Progress',
+                color: AppColors.warning,
+                icon: Icons.timelapse_rounded,
+                projectId: widget.project?.id,
+                draggedTaskId: _draggedTaskId,
+                draggedFromStatus: _draggedFromStatus,
+                isActive: _activeScrollStatus == TaskStatus.inProgress,
+                onActivate: () => _activateColumn(TaskStatus.inProgress),
+                onDragStarted: (taskId) {
+                  setState(() {
+                    _draggedTaskId = taskId;
+                    _draggedFromStatus = TaskStatus.inProgress;
+                  });
+                },
+                onDragEnded: () {
+                  setState(() {
+                    _draggedTaskId = null;
+                    _draggedFromStatus = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              _KanbanColumn(
+                status: TaskStatus.done,
+                label: 'Done',
+                color: AppColors.secondary,
+                icon: Icons.check_circle_outline_rounded,
+                projectId: widget.project?.id,
+                draggedTaskId: _draggedTaskId,
+                draggedFromStatus: _draggedFromStatus,
+                isActive: _activeScrollStatus == TaskStatus.done,
+                onActivate: () => _activateColumn(TaskStatus.done),
+                onDragStarted: (taskId) {
+                  setState(() {
+                    _draggedTaskId = taskId;
+                    _draggedFromStatus = TaskStatus.done;
+                  });
+                },
+                onDragEnded: () {
+                  setState(() {
+                    _draggedTaskId = null;
+                    _draggedFromStatus = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 80),
+            ],
           ),
-        ],
-      ),
-      body: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(8),
-        children: [
-          _KanbanColumn(
-            status: TaskStatus.todo,
-            label: 'To Do',
-            color: AppColors.primary,
-            icon: Icons.radio_button_unchecked,
-            projectId: widget.project?.id,
-            draggedTaskId: _draggedTaskId,
-            draggedFromStatus: _draggedFromStatus,
-            onDragStarted: (taskId) {
-              setState(() {
-                _draggedTaskId = taskId;
-                _draggedFromStatus = TaskStatus.todo;
-              });
-            },
-            onDragEnded: () {
-              setState(() {
-                _draggedTaskId = null;
-                _draggedFromStatus = null;
-              });
-            },
-          ),
-          const SizedBox(width: 8),
-          _KanbanColumn(
-            status: TaskStatus.inProgress,
-            label: 'In Progress',
-            color: AppColors.warning,
-            icon: Icons.timelapse_rounded,
-            projectId: widget.project?.id,
-            draggedTaskId: _draggedTaskId,
-            draggedFromStatus: _draggedFromStatus,
-            onDragStarted: (taskId) {
-              setState(() {
-                _draggedTaskId = taskId;
-                _draggedFromStatus = TaskStatus.inProgress;
-              });
-            },
-            onDragEnded: () {
-              setState(() {
-                _draggedTaskId = null;
-                _draggedFromStatus = null;
-              });
-            },
-          ),
-          const SizedBox(width: 8),
-          _KanbanColumn(
-            status: TaskStatus.done,
-            label: 'Done',
-            color: AppColors.secondary,
-            icon: Icons.check_circle_outline_rounded,
-            projectId: widget.project?.id,
-            draggedTaskId: _draggedTaskId,
-            draggedFromStatus: _draggedFromStatus,
-            onDragStarted: (taskId) {
-              setState(() {
-                _draggedTaskId = taskId;
-                _draggedFromStatus = TaskStatus.done;
-              });
-            },
-            onDragEnded: () {
-              setState(() {
-                _draggedTaskId = null;
-                _draggedFromStatus = null;
-              });
-            },
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -122,6 +153,8 @@ class _KanbanColumn extends ConsumerWidget {
   final int? projectId;
   final int? draggedTaskId;
   final TaskStatus? draggedFromStatus;
+  final bool isActive; // NEW
+  final VoidCallback onActivate; // NEW
   final ValueChanged<int> onDragStarted;
   final VoidCallback onDragEnded;
 
@@ -133,6 +166,8 @@ class _KanbanColumn extends ConsumerWidget {
     this.projectId,
     this.draggedTaskId,
     this.draggedFromStatus,
+    required this.isActive,
+    required this.onActivate,
     required this.onDragStarted,
     required this.onDragEnded,
   });
@@ -147,9 +182,6 @@ class _KanbanColumn extends ConsumerWidget {
       status: status,
     );
     final tasksAsync = ref.watch(allTasksStreamProvider(filter));
-
-    final screenWidth = MediaQuery.of(context).size.width;
-    final columnWidth = (screenWidth - 40).clamp(280.0, 340.0);
 
     return DragTarget<Map<String, dynamic>>(
       key: ValueKey('column_$status'),
@@ -170,155 +202,188 @@ class _KanbanColumn extends ConsumerWidget {
       builder: (context, candidateData, rejectedData) {
         final isHovering = candidateData.isNotEmpty;
 
-        return Container(
-          width: columnWidth,
-          decoration: BoxDecoration(
-            color: isHovering
-                ? color.withOpacity(0.12)
-                : color.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
+        // NEW: tap di dalam kolom (header / background) mengaktifkan kolom
+        // ini. Karena ini GestureDetector "anak", tap di sini tidak akan
+        // memicu GestureDetector deaktivasi di level Scaffold.
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onActivate,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            transform: Matrix4.translationValues(0, isActive ? -3 : 0, 0),
+            decoration: BoxDecoration(
               color: isHovering
-                  ? color.withOpacity(0.5)
-                  : color.withOpacity(0.2),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Column header
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(icon, color: color, size: 16),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: color, fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    tasksAsync.when(
-                      data: (tasks) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${tasks.length}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: color,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                    ),
-                  ],
-                ),
+                  ? color.withOpacity(0.12)
+                  : color.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isHovering
+                    ? color.withOpacity(0.5)
+                    : isActive
+                        ? Colors.grey.shade400.withOpacity(0.7)
+                        : color.withOpacity(0.2),
+                width: isActive ? 1.5 : 1,
               ),
-
-              // Task cards
-              Expanded(
-                child: tasksAsync.when(
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Column header
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16)),
                   ),
-                  error: (e, _) => Center(child: Text('Error: $e')),
-                  data: (tasks) {
-                    if (tasks.isEmpty) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Text(
-                            isHovering ? 'Lepas di sini' : 'Tidak ada\ntugas',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontSize: 11,
-                              color: isHovering ? color : null,
-                            ),
-                            textAlign: TextAlign.center,
+                  child: Row(
+                    children: [
+                      Icon(icon, color: color, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: color, fontSize: 12,
                           ),
                         ),
-                      );
-                    }
-                    return ListView.builder(
-                      padding: const EdgeInsets.all(8),
-                      itemCount: tasks.length,
-                      itemBuilder: (_, i) {
-                        final task = tasks[i];
-                        if (task.id == draggedTaskId && draggedFromStatus == status) {
-                          return Opacity(
-                            opacity: 0.3,
-                            child: _KanbanCard(
-                              task: task,
-                              columnColor: color,
+                      ),
+                      // NEW: indikator aktif
+                      // if (isActive) ...[
+                      //   Container(
+                      //     padding: const EdgeInsets.symmetric(
+                      //         horizontal: 6, vertical: 2),
+                      //     margin: const EdgeInsets.only(right: 6),
+                      //     decoration: BoxDecoration(
+                      //       color: color,
+                      //       borderRadius: BorderRadius.circular(10),
+                      //     ),
+                      //     child: Row(
+                      //       mainAxisSize: MainAxisSize.min,
+                      //       children: [
+                      //         const Icon(
+                      //           Icons.swipe_vertical_rounded,
+                      //           size: 10,
+                      //           color: Colors.white,
+                      //         ),
+                      //         const SizedBox(width: 3),
+                      //         Text(
+                      //           'Aktif',
+                      //           style: theme.textTheme.bodyMedium?.copyWith(
+                      //             fontSize: 9,
+                      //             color: Colors.white,
+                      //             fontWeight: FontWeight.w700,
+                      //           ),
+                      //         ),
+                      //       ],
+                      //     ),
+                      //   ),
+                      // ],
+                      tasksAsync.when(
+                        data: (tasks) => Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${tasks.length}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: color,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Task cards — constrained height, scroll aktif hanya saat
+                // kolom sedang "aktif". IgnorePointer mencegah list ini
+                // mencuri gesture drag/scroll saat tidak aktif.
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 280),
+                  child: IgnorePointer(
+                    ignoring: !isActive,
+                    child: tasksAsync.when(
+                      loading: () => const SizedBox(
+                        height: 60,
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      error: (e, _) => SizedBox(
+                        height: 60,
+                        child: Center(child: Text('Error: $e')),
+                      ),
+                      data: (tasks) {
+                        if (tasks.isEmpty) {
+                          return SizedBox(
+                            height: 60,
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Text(
+                                  isHovering
+                                      ? 'Lepas di sini'
+                                      : (isActive
+                                          ? 'Tidak ada\ntugas'
+                                          : 'Ketuk untuk\naktifkan'),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontSize: 11,
+                                    color: isHovering ? color : null,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
                             ),
                           );
                         }
-                        return _DraggableKanbanCard(
-                          task: task,
-                          columnColor: color,
-                          onDragStarted: () => onDragStarted(task.id),
-                          onDragEnded: onDragEnded,
+                        return ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+                          shrinkWrap: true,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: tasks.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (_, i) {
+                            final task = tasks[i];
+                            if (task.id == draggedTaskId && draggedFromStatus == status) {
+                              return Opacity(
+                                opacity: 0.3,
+                                child: _KanbanCard(task: task, columnColor: color),
+                              );
+                            }
+                            return _DraggableKanbanCard(
+                              task: task,
+                              columnColor: color,
+                              onDragStarted: () => onDragStarted(task.id),
+                              onDragEnded: onDragEnded,
+                            );
+                          },
                         );
                       },
-                    );
-                  },
-                ),
-              ),
-
-              // Add button
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          AddTaskScreen(projectId: projectId),
-                    ),
-                  ),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: color.withOpacity(0.2),
-                          style: BorderStyle.solid),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add, color: color, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Tambah',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: color,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -406,7 +471,7 @@ class _KanbanCard extends ConsumerWidget {
         MaterialPageRoute(builder: (_) => AddTaskScreen(task: task)),
       ),
       child: GlassCard(
-        margin: const EdgeInsets.only(bottom: 8),
+        // margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(10),
         radius: 10,
         child: Column(
