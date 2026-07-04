@@ -60,6 +60,8 @@ class Transaction {
   bool isRecurring = false;
 
   String? recurringInterval; // 'monthly', 'weekly'
+
+  int? taskId; // Reference to originating Task (for budget integration)
 }
 
 @collection

@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/helpers.dart';
-import '../../../../core/widgets/glass.dart';
 import '../../../../data/providers/finance_provider.dart';
 import '../../../../data/providers/notes_provider.dart';
 import '../../../../data/providers/tasks_provider.dart';
@@ -87,6 +86,36 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
+/// Card flat gelap solid — pengganti glass/blur, dipakai konsisten di semua
+/// section supaya tampilannya senada dengan referensi (Proton Pass / fitness app).
+class _FlatCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double radius;
+
+  const _FlatCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.radius = 18,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B1B1F), // solid, tidak transparan/blur
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.06),
+          width: 1,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
 class _DashboardHeader extends StatelessWidget {
   final String greeting;
   final DateTime now;
@@ -100,12 +129,6 @@ class _DashboardHeader extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(
         20, MediaQuery.of(context).padding.top + 20, 20, 24,
       ),
-      decoration: const BoxDecoration(
-        // gradient/background sendiri dihapus karena sudah pakai bg global dari Scaffold
-        border: Border(
-          bottom: BorderSide(color: AppColors.glassBorderDark, width: 1),
-        ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -118,7 +141,7 @@ class _DashboardHeader extends StatelessWidget {
                   Text(
                     greeting,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withOpacity(0.6),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -136,12 +159,12 @@ class _DashboardHeader extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.glassDark,
+                  color: Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.glassBorderDark, width: 1),
+                  border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
                 ),
                 child: const Icon(Icons.notifications_outlined,
-                    color: AppColors.gray400, size: 22),
+                    color: Colors.white70, size: 22),
               ),
             ],
           ),
@@ -157,9 +180,7 @@ class _FinanceSummaryCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final summaryAsync = ref.watch(monthlySummaryProvider);
 
-    return Transform.translate(
-      offset: const Offset(0, -20),
-      child: ClipRRect(
+    return ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
@@ -226,7 +247,7 @@ class _FinanceSummaryCard extends ConsumerWidget {
                     loading: () => const Center(
                       child: SizedBox(
                         height: 60,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
                       ),
                     ),
                     error: (e, _) => Text(
@@ -244,14 +265,23 @@ class _FinanceSummaryCard extends ConsumerWidget {
                             Text(
                               'Ringkasan Bulan Ini',
                               style: theme.textTheme.labelLarge?.copyWith(
-                                color: Colors.white.withOpacity(0.9),
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                            Text(
-                              DateFormat('MMM yyyy', 'id_ID').format(DateTime.now()),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                DateFormat('MMM yyyy', 'id_ID').format(DateTime.now()),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
                           ],
@@ -263,7 +293,6 @@ class _FinanceSummaryCard extends ConsumerWidget {
                               child: _FinanceStat(
                                 label: 'Pemasukan',
                                 amount: summary.totalIncome,
-                                color: AppColors.income,
                                 icon: Icons.arrow_downward_rounded,
                               ),
                             ),
@@ -276,7 +305,6 @@ class _FinanceSummaryCard extends ConsumerWidget {
                               child: _FinanceStat(
                                 label: 'Pengeluaran',
                                 amount: summary.totalExpense,
-                                color: AppColors.expense,
                                 icon: Icons.arrow_upward_rounded,
                               ),
                             ),
@@ -289,10 +317,8 @@ class _FinanceSummaryCard extends ConsumerWidget {
                               child: _FinanceStat(
                                 label: 'Saldo',
                                 amount: summary.balance,
-                                color: summary.balance >= 0
-                                    ? AppColors.primary
-                                    : AppColors.danger,
                                 icon: Icons.account_balance_wallet_outlined,
+                                isAccent: true,
                               ),
                             ),
                           ],
@@ -305,27 +331,28 @@ class _FinanceSummaryCard extends ConsumerWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
 
 class _FinanceStat extends StatelessWidget {
   final String label;
   final double amount;
-  final Color color;
   final IconData icon;
+  final bool isAccent;
 
   const _FinanceStat({
     required this.label,
     required this.amount,
-    required this.color,
     required this.icon,
+    this.isAccent = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final valueColor = isAccent ? AppColors.primary : Colors.white;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -334,20 +361,26 @@ class _FinanceStat extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Icon(icon, color: color, size: 12),
+              child: Icon(icon, color: Colors.white70, size: 12),
             ),
             const SizedBox(width: 6),
-            Text(label, style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11)),
+            Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontSize: 11,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 6),
         Text(
           CurrencyFormatter.formatCompact(amount.abs()),
           style: theme.textTheme.titleMedium?.copyWith(
-            color: color,
+            color: valueColor,
             fontWeight: FontWeight.w700,
             fontSize: 15,
           ),
@@ -376,10 +409,9 @@ class _BudgetAlertSection extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _SectionHeader(
+              const _SectionHeader(
                 title: 'Peringatan Anggaran',
                 icon: Icons.warning_amber_rounded,
-                iconColor: AppColors.warning,
               ),
               const SizedBox(height: 12),
               ...alerts.map((budget) => Padding(
@@ -402,13 +434,21 @@ class _BudgetAlertCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = budget.isOverBudget ? AppColors.danger : AppColors.warning;
+    final isOver = budget.isOverBudget;
 
-    return GlassCardPro(
+    return _FlatCard(
       padding: const EdgeInsets.all(14),
+      radius: 16,
       child: Row(
         children: [
-          CategoryIcon(icon: budget.categoryIcon, size: 24, color: color),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: CategoryIcon(icon: budget.categoryIcon, size: 20, color: Colors.white70),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -417,12 +457,16 @@ class _BudgetAlertCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(budget.categoryName,
-                        style: theme.textTheme.labelLarge),
                     Text(
-                      budget.isOverBudget ? 'Melebihi batas!' : 'Hampir limit',
+                      budget.categoryName,
+                      style: theme.textTheme.labelLarge?.copyWith(color: Colors.white),
+                    ),
+                    Text(
+                      isOver ? 'Melebihi batas!' : 'Hampir limit',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: color, fontWeight: FontWeight.w600, fontSize: 11,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
                       ),
                     ),
                   ],
@@ -432,15 +476,18 @@ class _BudgetAlertCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: budget.percentage,
-                    backgroundColor: color.withOpacity(0.15),
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                    backgroundColor: Colors.white.withOpacity(0.08),
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                     minHeight: 5,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${CurrencyFormatter.formatCompact(budget.spent)} / ${CurrencyFormatter.formatCompact(budget.budget)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
                 ),
               ],
             ),
@@ -462,18 +509,17 @@ class _TodayTasksSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(
+          const _SectionHeader(
             title: 'Tugas Hari Ini',
             icon: Icons.check_circle_outline_rounded,
-            iconColor: AppColors.secondary,
           ),
           const SizedBox(height: 12),
           tasksAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            error: (_, __) => const Text('Gagal memuat tugas'),
+            loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54)),
+            error: (_, __) => Text('Gagal memuat tugas', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70)),
             data: (tasks) {
               if (tasks.isEmpty) {
-                return _EmptyState(
+                return const _EmptyState(
                   icon: Icons.check_circle_outline_rounded,
                   message: 'Tidak ada tugas untuk hari ini.',
                 );
@@ -513,8 +559,9 @@ class _DashboardTaskCard extends StatelessWidget {
     final theme = Theme.of(context);
     final priorityColor = _priorityColor(task.priority);
 
-    return GlassCardPro(
+    return _FlatCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      radius: 16,
       child: Row(
         children: [
           GestureDetector(
@@ -525,12 +572,10 @@ class _DashboardTaskCard extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: task.isCompleted ? AppColors.secondary : priorityColor,
+                  color: task.isCompleted ? AppColors.primary : Colors.white.withOpacity(0.3),
                   width: 2,
                 ),
-                color: task.isCompleted
-                    ? AppColors.secondary
-                    : Colors.transparent,
+                color: task.isCompleted ? AppColors.primary : Colors.transparent,
               ),
               child: task.isCompleted
                   ? const Icon(Icons.check, color: Colors.white, size: 13)
@@ -546,16 +591,26 @@ class _DashboardTaskCard extends StatelessWidget {
                   task.title,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
-                    decoration: task.isCompleted
-                        ? TextDecoration.lineThrough
-                        : null,
+                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
                     color: task.isCompleted
-                        ? theme.textTheme.bodyMedium?.color
-                        : null,
+                        ? Colors.white.withOpacity(0.4)
+                        : Colors.white,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (task.tags.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    task.tags.map((t) => '#$t').join(' '),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: 11,
+                      color: AppColors.primary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 if (task.dueDate != null) ...[
                   const SizedBox(height: 2),
                   Text(
@@ -563,8 +618,8 @@ class _DashboardTaskCard extends StatelessWidget {
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontSize: 11,
                       color: DateHelper.isOverdue(task.dueDate!)
-                          ? AppColors.danger
-                          : null,
+                          ? AppColors.primary
+                          : Colors.white.withOpacity(0.5),
                     ),
                   ),
                 ],
@@ -585,9 +640,9 @@ class _DashboardTaskCard extends StatelessWidget {
 
   Color _priorityColor(TaskPriority priority) {
     switch (priority) {
-      case TaskPriority.high: return AppColors.priorityHigh;
-      case TaskPriority.medium: return AppColors.priorityMedium;
-      case TaskPriority.low: return AppColors.priorityLow;
+      case TaskPriority.high: return AppColors.primary;
+      case TaskPriority.medium: return Colors.white.withOpacity(0.5);
+      case TaskPriority.low: return Colors.white.withOpacity(0.25);
     }
   }
 }
@@ -595,6 +650,7 @@ class _DashboardTaskCard extends StatelessWidget {
 class _RecentNotesSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final notesAsync = ref.watch(recentNotesProvider);
 
     return Padding(
@@ -602,18 +658,17 @@ class _RecentNotesSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(
+          const _SectionHeader(
             title: 'Catatan Terbaru',
             icon: Icons.sticky_note_2_outlined,
-            iconColor: AppColors.noteIdea,
           ),
           const SizedBox(height: 12),
           notesAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            error: (_, __) => const Text('Gagal memuat catatan'),
+            loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54)),
+            error: (_, __) => Text('Gagal memuat catatan', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70)),
             data: (notes) {
               if (notes.isEmpty) {
-                return _EmptyState(
+                return const _EmptyState(
                   icon: Icons.sticky_note_2_outlined,
                   message: 'Belum ada catatan. Mulai tulis sekarang!',
                 );
@@ -644,8 +699,9 @@ class _NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return GlassCardPro(
+    return _FlatCard(
       padding: const EdgeInsets.all(14),
+      radius: 16,
       child: SizedBox(
         width: 160,
         child: Column(
@@ -659,7 +715,7 @@ class _NoteCard extends StatelessWidget {
             Text(
               note.title.isEmpty ? 'Tanpa Judul' : note.title,
               style: theme.textTheme.labelLarge?.copyWith(
-                color: Colors.white.withOpacity(0.9), fontSize: 13,
+                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -669,7 +725,7 @@ class _NoteCard extends StatelessWidget {
               child: Text(
                 note.content,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  fontSize: 11, color: Colors.white.withOpacity(0.7),
+                  fontSize: 11, color: Colors.white.withOpacity(0.6),
                 ),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -678,7 +734,7 @@ class _NoteCard extends StatelessWidget {
             Text(
               DateHelper.relativeTime(note.updatedAt),
               style: theme.textTheme.bodyMedium?.copyWith(
-                fontSize: 10, color: Colors.white.withOpacity(0.5),
+                fontSize: 10, color: Colors.white.withOpacity(0.4),
               ),
             ),
           ],
@@ -691,12 +747,10 @@ class _NoteCard extends StatelessWidget {
 class _SectionHeader extends StatelessWidget {
   final String title;
   final IconData icon;
-  final Color iconColor;
 
   const _SectionHeader({
     required this.title,
     required this.icon,
-    required this.iconColor,
   });
 
   @override
@@ -707,13 +761,19 @@ class _SectionHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
+            color: Colors.white.withOpacity(0.08),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: iconColor, size: 16),
+          child: Icon(icon, color: Colors.white70, size: 16),
         ),
         const SizedBox(width: 10),
-        Text(title, style: theme.textTheme.titleMedium),
+        Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }
@@ -733,11 +793,21 @@ class _EmptyState extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         children: [
-          IconBox(icon: icon, size: 48, iconSize: 24),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white.withOpacity(0.4), size: 24),
+          ),
           const SizedBox(height: 8),
-          Text(message,
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center),
+          Text(
+            message,
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white.withOpacity(0.5)),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );

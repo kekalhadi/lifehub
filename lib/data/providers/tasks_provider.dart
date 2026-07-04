@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import '../models/task_model.dart';
+import '../models/finance_model.dart';
 import 'database_provider.dart';
+import 'finance_provider.dart';
 
 // Stream-based — otomatis reactive
 final allTasksStreamProvider = StreamProvider.family<List<Task>, TaskFilter>((ref, filter) async* {
@@ -139,6 +141,7 @@ class TasksNotifier extends Notifier<AsyncValue<void>> {
   }
 
   Future<void> toggleComplete(Task task) async {
+    final wasCompleted = task.isCompleted;
     task.isCompleted = !task.isCompleted;
     if (task.isCompleted) {
       task.status = TaskStatus.done;
@@ -148,9 +151,17 @@ class TasksNotifier extends Notifier<AsyncValue<void>> {
       task.completedAt = null;
     }
     await saveTask(task);
+
+    if (task.isCompleted && !wasCompleted && task.hasBudget && task.budgetAmount != null) {
+      await _createBudgetTransaction(task);
+    }
+    if (wasCompleted && !task.isCompleted) {
+      await _removeBudgetTransaction(task.id);
+    }
   }
 
   Future<void> updateStatus(Task task, TaskStatus status) async {
+    final wasCompleted = task.isCompleted;
     task.status = status;
     if (status == TaskStatus.done) {
       task.isCompleted = true;
@@ -160,6 +171,53 @@ class TasksNotifier extends Notifier<AsyncValue<void>> {
       task.completedAt = null;
     }
     await saveTask(task);
+
+    if (status == TaskStatus.done && !wasCompleted && task.hasBudget && task.budgetAmount != null) {
+      await _createBudgetTransaction(task);
+    }
+    if (wasCompleted && status != TaskStatus.done) {
+      await _removeBudgetTransaction(task.id);
+    }
+  }
+
+  Future<void> _createBudgetTransaction(Task task) async {
+    try {
+      final isar = await ref.read(isarProvider.future);
+      final existing = await isar.transactions
+          .filter()
+          .taskIdEqualTo(task.id)
+          .findFirst();
+      if (existing != null) return;
+
+      final txnType = task.budgetType == 'income'
+          ? TransactionType.income
+          : TransactionType.expense;
+
+      final transaction = Transaction()
+        ..amount = task.budgetAmount!
+        ..type = txnType
+        ..categoryName = task.budgetCategoryName ?? ''
+        ..categoryIcon = task.budgetCategoryIcon ?? 'inventory_2'
+        ..walletName = task.budgetWalletName ?? 'Uang Tunai'
+        ..note = 'Otomatis dari tugas: ${task.title}'
+        ..date = DateTime.now()
+        ..taskId = task.id;
+
+      await ref.read(financeNotifierProvider.notifier).addTransaction(transaction);
+    } catch (_) {}
+  }
+
+  Future<void> _removeBudgetTransaction(int taskId) async {
+    try {
+      final isar = await ref.read(isarProvider.future);
+      final existing = await isar.transactions
+          .filter()
+          .taskIdEqualTo(taskId)
+          .findFirst();
+      if (existing != null) {
+        await ref.read(financeNotifierProvider.notifier).deleteTransaction(existing);
+      }
+    } catch (_) {}
   }
 
   Future<void> deleteTask(int id) async {

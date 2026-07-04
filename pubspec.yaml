@@ -49,6 +49,14 @@ dev_dependencies:
   isar_generator: ^3.1.0+1
   build_runner: 2.4.9
   riverpod_generator: ^2.4.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "lib/resources/app-logo.jpg"
+  adaptive_icon_background: "#0D0D0F"
+  adaptive_icon_foreground: "lib/resources/app-logo.jpg"
 
 flutter:
   uses-material-design: true

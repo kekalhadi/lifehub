@@ -1801,14 +1801,19 @@ const TransactionSchema = CollectionSchema(
       name: r'recurringInterval',
       type: IsarType.string,
     ),
-    r'type': PropertySchema(
+    r'taskId': PropertySchema(
       id: 8,
+      name: r'taskId',
+      type: IsarType.long,
+    ),
+    r'type': PropertySchema(
+      id: 9,
       name: r'type',
       type: IsarType.byte,
       enumMap: _TransactiontypeEnumValueMap,
     ),
     r'walletName': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'walletName',
       type: IsarType.string,
     )
@@ -1860,8 +1865,9 @@ void _transactionSerialize(
   writer.writeBool(offsets[5], object.isRecurring);
   writer.writeString(offsets[6], object.note);
   writer.writeString(offsets[7], object.recurringInterval);
-  writer.writeByte(offsets[8], object.type.index);
-  writer.writeString(offsets[9], object.walletName);
+  writer.writeLong(offsets[8], object.taskId);
+  writer.writeByte(offsets[9], object.type.index);
+  writer.writeString(offsets[10], object.walletName);
 }
 
 Transaction _transactionDeserialize(
@@ -1880,10 +1886,11 @@ Transaction _transactionDeserialize(
   object.isRecurring = reader.readBool(offsets[5]);
   object.note = reader.readString(offsets[6]);
   object.recurringInterval = reader.readStringOrNull(offsets[7]);
+  object.taskId = reader.readLongOrNull(offsets[8]);
   object.type =
-      _TransactiontypeValueEnumMap[reader.readByteOrNull(offsets[8])] ??
+      _TransactiontypeValueEnumMap[reader.readByteOrNull(offsets[9])] ??
           TransactionType.income;
-  object.walletName = reader.readString(offsets[9]);
+  object.walletName = reader.readString(offsets[10]);
   return object;
 }
 
@@ -1911,9 +1918,11 @@ P _transactionDeserializeProp<P>(
     case 7:
       return (reader.readStringOrNull(offset)) as P;
     case 8:
+      return (reader.readLongOrNull(offset)) as P;
+    case 9:
       return (_TransactiontypeValueEnumMap[reader.readByteOrNull(offset)] ??
           TransactionType.income) as P;
-    case 9:
+    case 10:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2814,6 +2823,77 @@ extension TransactionQueryFilter
     });
   }
 
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition> taskIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'taskId',
+      ));
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+      taskIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'taskId',
+      ));
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition> taskIdEqualTo(
+      int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'taskId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+      taskIdGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'taskId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition> taskIdLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'taskId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition> taskIdBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'taskId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<Transaction, Transaction, QAfterFilterCondition> typeEqualTo(
       TransactionType value) {
     return QueryBuilder.apply(this, (query) {
@@ -3112,6 +3192,18 @@ extension TransactionQuerySortBy
     });
   }
 
+  QueryBuilder<Transaction, Transaction, QAfterSortBy> sortByTaskId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'taskId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy> sortByTaskIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'taskId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Transaction, Transaction, QAfterSortBy> sortByType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'type', Sort.asc);
@@ -3251,6 +3343,18 @@ extension TransactionQuerySortThenBy
     });
   }
 
+  QueryBuilder<Transaction, Transaction, QAfterSortBy> thenByTaskId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'taskId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy> thenByTaskIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'taskId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Transaction, Transaction, QAfterSortBy> thenByType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'type', Sort.asc);
@@ -3331,6 +3435,12 @@ extension TransactionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Transaction, Transaction, QDistinct> distinctByTaskId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'taskId');
+    });
+  }
+
   QueryBuilder<Transaction, Transaction, QDistinct> distinctByType() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'type');
@@ -3399,6 +3509,12 @@ extension TransactionQueryProperty
       recurringIntervalProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'recurringInterval');
+    });
+  }
+
+  QueryBuilder<Transaction, int?, QQueryOperations> taskIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'taskId');
     });
   }
 

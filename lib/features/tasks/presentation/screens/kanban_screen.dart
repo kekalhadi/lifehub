@@ -5,16 +5,25 @@ import '../../../../core/utils/helpers.dart';
 import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/task_model.dart';
 import '../../../../data/providers/tasks_provider.dart';
+import '../../../../data/providers/database_provider.dart';
 import 'add_task_screen.dart';
 
-class KanbanScreen extends ConsumerWidget {
+class KanbanScreen extends ConsumerStatefulWidget {
   final Project? project;
 
   const KanbanScreen({super.key, this.project});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final title = project?.title ?? 'Kanban Board';
+  ConsumerState<KanbanScreen> createState() => _KanbanScreenState();
+}
+
+class _KanbanScreenState extends ConsumerState<KanbanScreen> {
+  int? _draggedTaskId;
+  TaskStatus? _draggedFromStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = widget.project?.title ?? 'Kanban Board';
 
     return Scaffold(
       appBar: AppBar(
@@ -24,35 +33,80 @@ class KanbanScreen extends ConsumerWidget {
             icon: const Icon(Icons.add),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => AddTaskScreen(projectId: project?.id),
+                builder: (_) => AddTaskScreen(projectId: widget.project?.id),
               ),
             ),
           ),
         ],
       ),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.all(8),
         children: [
           _KanbanColumn(
             status: TaskStatus.todo,
             label: 'To Do',
             color: AppColors.primary,
             icon: Icons.radio_button_unchecked,
-            projectId: project?.id,
+            projectId: widget.project?.id,
+            draggedTaskId: _draggedTaskId,
+            draggedFromStatus: _draggedFromStatus,
+            onDragStarted: (taskId) {
+              setState(() {
+                _draggedTaskId = taskId;
+                _draggedFromStatus = TaskStatus.todo;
+              });
+            },
+            onDragEnded: () {
+              setState(() {
+                _draggedTaskId = null;
+                _draggedFromStatus = null;
+              });
+            },
           ),
+          const SizedBox(width: 8),
           _KanbanColumn(
             status: TaskStatus.inProgress,
             label: 'In Progress',
             color: AppColors.warning,
             icon: Icons.timelapse_rounded,
-            projectId: project?.id,
+            projectId: widget.project?.id,
+            draggedTaskId: _draggedTaskId,
+            draggedFromStatus: _draggedFromStatus,
+            onDragStarted: (taskId) {
+              setState(() {
+                _draggedTaskId = taskId;
+                _draggedFromStatus = TaskStatus.inProgress;
+              });
+            },
+            onDragEnded: () {
+              setState(() {
+                _draggedTaskId = null;
+                _draggedFromStatus = null;
+              });
+            },
           ),
+          const SizedBox(width: 8),
           _KanbanColumn(
             status: TaskStatus.done,
             label: 'Done',
             color: AppColors.secondary,
             icon: Icons.check_circle_outline_rounded,
-            projectId: project?.id,
+            projectId: widget.project?.id,
+            draggedTaskId: _draggedTaskId,
+            draggedFromStatus: _draggedFromStatus,
+            onDragStarted: (taskId) {
+              setState(() {
+                _draggedTaskId = taskId;
+                _draggedFromStatus = TaskStatus.done;
+              });
+            },
+            onDragEnded: () {
+              setState(() {
+                _draggedTaskId = null;
+                _draggedFromStatus = null;
+              });
+            },
           ),
         ],
       ),
@@ -66,6 +120,10 @@ class _KanbanColumn extends ConsumerWidget {
   final Color color;
   final IconData icon;
   final int? projectId;
+  final int? draggedTaskId;
+  final TaskStatus? draggedFromStatus;
+  final ValueChanged<int> onDragStarted;
+  final VoidCallback onDragEnded;
 
   const _KanbanColumn({
     required this.status,
@@ -73,6 +131,10 @@ class _KanbanColumn extends ConsumerWidget {
     required this.color,
     required this.icon,
     this.projectId,
+    this.draggedTaskId,
+    this.draggedFromStatus,
+    required this.onDragStarted,
+    required this.onDragEnded,
   });
 
   @override
@@ -86,137 +148,241 @@ class _KanbanColumn extends ConsumerWidget {
     );
     final tasksAsync = ref.watch(allTasksStreamProvider(filter));
 
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Column header
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16)),
-              ),
-              child: Row(
-                children: [
-                  Icon(icon, color: color, size: 16),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: color, fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  tasksAsync.when(
-                    data: (tasks) => Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+    final screenWidth = MediaQuery.of(context).size.width;
+    final columnWidth = (screenWidth - 40).clamp(280.0, 340.0);
+
+    return DragTarget<Map<String, dynamic>>(
+      key: ValueKey('column_$status'),
+      onWillAcceptWithDetails: (details) {
+        final data = details.data;
+        if (data['taskId'] == draggedTaskId && draggedFromStatus == status) {
+          return false;
+        }
+        return true;
+      },
+      onAcceptWithDetails: (details) {
+        final data = details.data;
+        final taskId = data['taskId'] as int;
+        _moveTask(ref, taskId, status);
+        onDragEnded();
+      },
+      onLeave: (_) {},
+      builder: (context, candidateData, rejectedData) {
+        final isHovering = candidateData.isNotEmpty;
+
+        return Container(
+          width: columnWidth,
+          decoration: BoxDecoration(
+            color: isHovering
+                ? color.withOpacity(0.12)
+                : color.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isHovering
+                  ? color.withOpacity(0.5)
+                  : color.withOpacity(0.2),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Column header
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(icon, color: color, size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
                       child: Text(
-                        '${tasks.length}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
+                        label,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: color, fontSize: 12,
                         ),
                       ),
                     ),
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                ],
-              ),
-            ),
-
-            // Task cards
-            Expanded(
-              child: tasksAsync.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                error: (e, _) => Center(child: Text('Error: $e')),
-                data: (tasks) {
-                  if (tasks.isEmpty) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
+                    tasksAsync.when(
+                      data: (tasks) => Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         child: Text(
-                          'Tidak ada\ntugas',
+                          '${tasks.length}',
                           style: theme.textTheme.bodyMedium?.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.w700,
                             fontSize: 11,
                           ),
-                          textAlign: TextAlign.center,
                         ),
                       ),
-                    );
-                  }
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(8),
-                    itemCount: tasks.length,
-                    itemBuilder: (_, i) => _KanbanCard(
-                      task: tasks[i],
-                      columnColor: color,
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
-            ),
 
-            // Add button
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        AddTaskScreen(projectId: projectId),
+              // Task cards
+              Expanded(
+                child: tasksAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                ),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: color.withOpacity(0.2),
-                        style: BorderStyle.solid),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add, color: color, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Tambah',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: color,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                  error: (e, _) => Center(child: Text('Error: $e')),
+                  data: (tasks) {
+                    if (tasks.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(
+                            isHovering ? 'Lepas di sini' : 'Tidak ada\ntugas',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontSize: 11,
+                              color: isHovering ? color : null,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                      ),
-                    ],
+                      );
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(8),
+                      itemCount: tasks.length,
+                      itemBuilder: (_, i) {
+                        final task = tasks[i];
+                        if (task.id == draggedTaskId && draggedFromStatus == status) {
+                          return Opacity(
+                            opacity: 0.3,
+                            child: _KanbanCard(
+                              task: task,
+                              columnColor: color,
+                            ),
+                          );
+                        }
+                        return _DraggableKanbanCard(
+                          task: task,
+                          columnColor: color,
+                          onDragStarted: () => onDragStarted(task.id),
+                          onDragEnded: onDragEnded,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // Add button
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AddTaskScreen(projectId: projectId),
+                    ),
+                  ),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: color.withOpacity(0.2),
+                          style: BorderStyle.solid),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add, color: color, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Tambah',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: color,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _moveTask(WidgetRef ref, int taskId, TaskStatus newStatus) async {
+    final isar = await ref.read(isarProvider.future);
+    final task = await isar.tasks.get(taskId);
+    if (task != null && task.status != newStatus) {
+      await ref.read(tasksNotifierProvider.notifier).updateStatus(task, newStatus);
+    }
+  }
+}
+
+class _DraggableKanbanCard extends StatelessWidget {
+  final Task task;
+  final Color columnColor;
+  final VoidCallback onDragStarted;
+  final VoidCallback onDragEnded;
+
+  const _DraggableKanbanCard({
+    required this.task,
+    required this.columnColor,
+    required this.onDragStarted,
+    required this.onDragEnded,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LongPressDraggable<Map<String, dynamic>>(
+      data: {'taskId': task.id},
+      feedback: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(10),
+        color: Colors.transparent,
+        child: Container(
+          width: 250,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B1B1F),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: columnColor, width: 1),
+          ),
+          child: Text(
+            task.title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
             ),
-          ],
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ),
+      childWhenDragging: Opacity(
+        opacity: 0.3,
+        child: _KanbanCard(task: task, columnColor: columnColor),
+      ),
+      onDragStarted: onDragStarted,
+      onDragEnd: (_) => onDragEnded(),
+      onDraggableCanceled: (_, __) => onDragEnded(),
+      child: _KanbanCard(task: task, columnColor: columnColor),
     );
   }
 }
@@ -239,7 +405,6 @@ class _KanbanCard extends ConsumerWidget {
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => AddTaskScreen(task: task)),
       ),
-      onLongPress: () => _showStatusPicker(context, ref),
       child: GlassCard(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(10),
@@ -247,17 +412,25 @@ class _KanbanCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              task.title,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                decoration: task.isCompleted
-                    ? TextDecoration.lineThrough
-                    : null,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    task.title,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      decoration: task.isCompleted
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.drag_indicator_rounded, size: 16, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.3)),
+              ],
             ),
             if (task.description.isNotEmpty) ...[
               const SizedBox(height: 4),
@@ -303,7 +476,7 @@ class _KanbanCard extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  'Hold untuk pindah',
+                  'Tahan & geser',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontSize: 9,
                     color: theme.textTheme.bodyMedium?.color
@@ -318,75 +491,11 @@ class _KanbanCard extends ConsumerWidget {
     );
   }
 
-  void _showStatusPicker(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Pindah ke kolom',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
-            ...TaskStatus.values.map((s) {
-              final isCurrent = task.status == s;
-              return ListTile(
-                leading: Icon(
-                  _statusIcon(s),
-                  color: isCurrent ? _statusColor(s) : null,
-                ),
-                title: Text(_statusLabel(s)),
-                trailing: isCurrent
-                    ? const Icon(Icons.check, color: AppColors.secondary)
-                    : null,
-                onTap: () {
-                  Navigator.pop(context);
-                  ref
-                      .read(tasksNotifierProvider.notifier)
-                      .updateStatus(task, s);
-                },
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
   Color _priorityColor(TaskPriority p) {
     switch (p) {
       case TaskPriority.high: return AppColors.priorityHigh;
       case TaskPriority.medium: return AppColors.priorityMedium;
       case TaskPriority.low: return AppColors.priorityLow;
-    }
-  }
-
-  Color _statusColor(TaskStatus s) {
-    switch (s) {
-      case TaskStatus.todo: return AppColors.primary;
-      case TaskStatus.inProgress: return AppColors.warning;
-      case TaskStatus.done: return AppColors.secondary;
-    }
-  }
-
-  IconData _statusIcon(TaskStatus s) {
-    switch (s) {
-      case TaskStatus.todo: return Icons.radio_button_unchecked;
-      case TaskStatus.inProgress: return Icons.timelapse_rounded;
-      case TaskStatus.done: return Icons.check_circle_outline_rounded;
-    }
-  }
-
-  String _statusLabel(TaskStatus s) {
-    switch (s) {
-      case TaskStatus.todo: return 'To Do';
-      case TaskStatus.inProgress: return 'In Progress';
-      case TaskStatus.done: return 'Done';
     }
   }
 }

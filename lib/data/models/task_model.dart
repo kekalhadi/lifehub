@@ -30,9 +30,24 @@ class Task {
 
   int? projectId; // null = standalone daily task
 
+  late List<String> tags;
+
   bool hasReminder = false;
 
   DateTime? reminderTime;
+
+  // Budget integration fields
+  bool hasBudget = false;
+
+  double? budgetAmount;
+
+  String? budgetType; // 'income' or 'expense'
+
+  String? budgetCategoryName;
+
+  String? budgetCategoryIcon;
+
+  String? budgetWalletName;
 }
 
 @collection

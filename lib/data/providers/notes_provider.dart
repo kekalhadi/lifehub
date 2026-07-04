@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import '../models/note_model.dart';
+import '../models/task_model.dart';
 import 'database_provider.dart';
 
 // Notes list provider
@@ -294,6 +295,46 @@ final notesByTagsProvider = FutureProvider.family<List<Note>, List<String>>((ref
     .where((note) => tags.any((tag) => note.tags.contains(tag)))
     .toList()
     ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+});
+
+/// Tag usage counts scoped to **Notes** module only.
+final notesTagCountsProvider = StreamProvider<Map<String, int>>((ref) async* {
+  final isar = await ref.watch(isarProvider.future);
+
+  await for (final _ in isar.notes.where().watch(fireImmediately: true)) {
+    final notes = await isar.notes.where().findAll();
+    final Map<String, int> counts = {};
+    for (final note in notes) {
+      for (final tag in note.tags) {
+        counts[tag] = (counts[tag] ?? 0) + 1;
+      }
+    }
+    counts.removeWhere((_, v) => v == 0);
+    final sorted = Map.fromEntries(
+      counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value)),
+    );
+    yield sorted;
+  }
+});
+
+/// Tag usage counts scoped to **Tasks** module only.
+final tasksTagCountsProvider = StreamProvider<Map<String, int>>((ref) async* {
+  final isar = await ref.watch(isarProvider.future);
+
+  await for (final _ in isar.tasks.where().watch(fireImmediately: true)) {
+    final tasks = await isar.tasks.where().findAll();
+    final Map<String, int> counts = {};
+    for (final task in tasks) {
+      for (final tag in task.tags) {
+        counts[tag] = (counts[tag] ?? 0) + 1;
+      }
+    }
+    counts.removeWhere((_, v) => v == 0);
+    final sorted = Map.fromEntries(
+      counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value)),
+    );
+    yield sorted;
+  }
 });
 
 class NoteFilter {

@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/task_model.dart';
+import '../../../../data/providers/notes_provider.dart';
 import '../../../../data/providers/tasks_provider.dart';
 import 'add_task_screen.dart';
 import 'kanban_screen.dart';
@@ -17,6 +18,8 @@ class TasksScreen extends ConsumerStatefulWidget {
 
 class _TasksScreenState extends ConsumerState<TasksScreen> {
   bool _showCompleted = false;
+  List<String> _selectedTags = [];
+  bool _showTagFilter = false;
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +41,74 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             tooltip: _showCompleted ? 'Sembunyikan selesai' : 'Tampilkan selesai',
             onPressed: () => setState(() => _showCompleted = !_showCompleted),
           ),
+          IconButton(
+            icon: Icon(_showTagFilter ? Icons.tag : Icons.tag_outlined),
+            onPressed: () => setState(() => _showTagFilter = !_showTagFilter),
+            tooltip: 'Filter berdasarkan Tag',
+          ),
         ],
       ),
-      body: _DailyTasksTab(showCompleted: _showCompleted),
+      body: Column(
+        children: [
+          if (_showTagFilter) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: ref.watch(tasksTagCountsProvider).when(
+                loading: () => const SizedBox(
+                    height: 30, child: CircularProgressIndicator()),
+                error: (_, __) => const SizedBox(height: 30),
+                data: (tagCounts) {
+                  if (tagCounts.isEmpty) {
+                    return const Text(
+                      'Belum ada tag. Buat tugas dengan tag untuk mulai memfilter.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    );
+                  }
+                  return SizedBox(
+                    height: 32,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.zero,
+                      itemCount: tagCounts.entries.take(10).length + 1,
+                      separatorBuilder: (_, __) => const SizedBox(width: 6),
+                      itemBuilder: (_, i) {
+                        if (i == 0) {
+                          return _TagFilterChip(
+                            label: 'Semua',
+                            isSelected: _selectedTags.isEmpty,
+                            onTap: () => setState(() => _selectedTags = []),
+                          );
+                        }
+                        final e = tagCounts.entries.take(10).toList()[i - 1];
+                        return _TagFilterChip(
+                          label: '#${e.key}',
+                          isSelected: _selectedTags.contains(e.key),
+                          onTap: () {
+                            setState(() {
+                              if (_selectedTags.contains(e.key)) {
+                                _selectedTags.remove(e.key);
+                              } else {
+                                _selectedTags.add(e.key);
+                              }
+                            });
+                          },
+                          count: e.value,
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+          Expanded(
+            child: _DailyTasksTab(
+              showCompleted: _showCompleted,
+              selectedTags: _selectedTags,
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'tasks_fab',
         onPressed: () => Navigator.of(context).push(
@@ -56,8 +124,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
 class _DailyTasksTab extends ConsumerWidget {
   final bool showCompleted;
+  final List<String> selectedTags;
 
-  const _DailyTasksTab({required this.showCompleted});
+  const _DailyTasksTab({required this.showCompleted, required this.selectedTags});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,17 +137,24 @@ class _DailyTasksTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
       data: (tasks) {
-        if (tasks.isEmpty) {
+        List<Task> filtered = tasks;
+
+        if (selectedTags.isNotEmpty) {
+          filtered = filtered
+              .where((t) => selectedTags.any((tag) => t.tags.contains(tag)))
+              .toList();
+        }
+
+        if (filtered.isEmpty) {
           return const _EmptyTasks();
         }
 
-        // Group by priority
         final highPriority =
-        tasks.where((t) => t.priority == TaskPriority.high).toList();
+        filtered.where((t) => t.priority == TaskPriority.high).toList();
         final medPriority =
-        tasks.where((t) => t.priority == TaskPriority.medium).toList();
+        filtered.where((t) => t.priority == TaskPriority.medium).toList();
         final lowPriority =
-        tasks.where((t) => t.priority == TaskPriority.low).toList();
+        filtered.where((t) => t.priority == TaskPriority.low).toList();
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
@@ -211,6 +287,18 @@ class _TaskCard extends ConsumerWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                    if (task.tags.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        task.tags.map((t) => '#$t').join(' '),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 11,
+                          color: AppColors.primary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                     if (task.dueDate != null) ...[
                       const SizedBox(height: 4),
                       Row(
@@ -322,6 +410,71 @@ class _EmptyTasks extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TagFilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final int? count;
+
+  const _TagFilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : theme.cardTheme.color,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : theme.dividerColor,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontSize: 11,
+                color: isSelected ? AppColors.black : theme.textTheme.bodyMedium?.color,
+              ),
+            ),
+            if (count != null && count! > 0) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.black.withOpacity(0.1)
+                      : Colors.grey.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$count',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 9,
+                    color: isSelected ? AppColors.black : Colors.grey,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

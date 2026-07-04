@@ -11,6 +11,7 @@ import '../../../../data/providers/finance_provider.dart';
 import 'add_transaction_screen.dart';
 import 'add_budget_screen.dart';
 import 'finance_category_management_screen.dart';
+import 'dart:ui';
 
 class FinanceScreen extends ConsumerStatefulWidget {
   const FinanceScreen({super.key});
@@ -169,41 +170,87 @@ class _TransactionsTabState extends ConsumerState<_TransactionsTab> {
           ),
         ),
 
-        // Summary Row
+        // Summary — glass card style matching Dashboard
         summaryAsync.when(
-          loading: () => const SizedBox(height: 70),
+          loading: () => const SizedBox(height: 140),
           error: (_, __) => const SizedBox.shrink(),
-          data: (summary) => GlassCard(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _SummaryItem(
-                    label: 'Pemasukan',
-                    amount: summary.totalIncome,
-                    color: AppColors.income,
+          data: (summary) => Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            child: GlassCardPro(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Ringkasan Bulan Ini',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          DateFormat('MMM yyyy', 'id_ID').format(_month),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Container(width: 1, height: 40, color: theme.dividerColor),
-                Expanded(
-                  child: _SummaryItem(
-                    label: 'Pengeluaran',
-                    amount: summary.totalExpense,
-                    color: AppColors.expense,
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _FinanceStatItem(
+                          label: 'Pemasukan',
+                          amount: summary.totalIncome,
+                          icon: Icons.arrow_downward_rounded,
+                          color: AppColors.income,
+                        ),
+                      ),
+                      Container(
+                        width: 1, height: 48,
+                        color: Colors.white.withOpacity(0.15),
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      Expanded(
+                        child: _FinanceStatItem(
+                          label: 'Pengeluaran',
+                          amount: summary.totalExpense,
+                          icon: Icons.arrow_upward_rounded,
+                          color: AppColors.expense,
+                        ),
+                      ),
+                      Container(
+                        width: 1, height: 48,
+                        color: Colors.white.withOpacity(0.15),
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      Expanded(
+                        child: _FinanceStatItem(
+                          label: 'Saldo',
+                          amount: summary.balance,
+                          icon: Icons.account_balance_wallet_outlined,
+                          color: summary.balance >= 0
+                              ? AppColors.primary
+                              : AppColors.danger,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Container(width: 1, height: 40, color: theme.dividerColor),
-                Expanded(
-                  child: _SummaryItem(
-                    label: 'Saldo',
-                    amount: summary.balance,
-                    color: summary.balance >= 0
-                        ? AppColors.primary
-                        : AppColors.danger,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -700,6 +747,62 @@ class _SummaryItem extends StatelessWidget {
           CurrencyFormatter.formatCompact(amount.abs()),
           style: theme.textTheme.titleMedium?.copyWith(
             color: color, fontWeight: FontWeight.w700, fontSize: 14,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+class _FinanceStatItem extends StatelessWidget {
+  final String label;
+  final double amount;
+  final IconData icon;
+  final Color color;
+
+  const _FinanceStatItem({
+    required this.label,
+    required this.amount,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(icon, color: Colors.white70, size: 12),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontSize: 11,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          CurrencyFormatter.formatCompact(amount.abs()),
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

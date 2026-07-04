@@ -88,7 +88,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen>
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(_showTagFilter ? 180 : 120),
+          preferredSize: Size.fromHeight(_showTagFilter ? 200 : 120),
           child: Column(
             children: [
               // Search Bar
@@ -123,7 +123,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen>
                     categories: categories,
                     selectedCategory: _selectedCategory,
                     onCategorySelected: (category) => setState(() {
-                      // Toggle: kalau diketuk lagi, batalkan pilihan
                       _selectedCategory =
                           category?.id == _selectedCategory?.id ? null : category;
                       _showJournalOnly = false;
@@ -133,8 +132,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen>
                         MaterialPageRoute(builder: (_) => const AddCategoryScreen()),
                       );
                       if (result != null && result is int) {
-                        // Paksa refresh & ambil data terbaru (hindari cache stale
-                        // yang sebelumnya menyebabkan firstWhere "No element")
                         ref.invalidate(noteCategoriesProvider);
                         final cats = await ref.read(noteCategoriesProvider.future);
                         if (cats.isEmpty) return;
@@ -149,45 +146,53 @@ class _NotesScreenState extends ConsumerState<NotesScreen>
                 ),
               ),
 
-              // Tag Filter (Multiple Select)
+              // Tag Filter (Multiple Select) — scoped to notes module
               if (_showTagFilter) ...[
                 const SizedBox(height: 4),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: ref.watch(allTagsProvider).when(
+                  child: ref.watch(notesTagCountsProvider).when(
                     loading: () => const SizedBox(height: 30, child: CircularProgressIndicator()),
                     error: (_, __) => const SizedBox(height: 30),
-                    data: (tags) {
-                      if (tags.isEmpty) {
+                    data: (tagCounts) {
+                      if (tagCounts.isEmpty) {
                         return const Text(
                           'Belum ada tag. Buat catatan dengan tag untuk mulai memfilter.',
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         );
                       }
-                      return Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          _TagFilterChip(
-                            label: 'Semua',
-                            isSelected: _selectedTags.isEmpty,
-                            onTap: () => setState(() => _selectedTags = []),
-                          ),
-                          ...tags.take(10).map((tag) => _TagFilterChip(
-                            label: '#${tag.name}',
-                            isSelected: _selectedTags.contains(tag.name),
-                            onTap: () {
-                              setState(() {
-                                if (_selectedTags.contains(tag.name)) {
-                                  _selectedTags.remove(tag.name);
-                                } else {
-                                  _selectedTags.add(tag.name);
-                                }
-                              });
-                            },
-                            count: tag.usageCount,
-                          )),
-                        ],
+                      return SizedBox(
+                        height: 32,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: EdgeInsets.zero,
+                          itemCount: tagCounts.entries.take(10).length + 1,
+                          separatorBuilder: (_, __) => const SizedBox(width: 6),
+                          itemBuilder: (_, i) {
+                            if (i == 0) {
+                              return _TagFilterChip(
+                                label: 'Semua',
+                                isSelected: _selectedTags.isEmpty,
+                                onTap: () => setState(() => _selectedTags = []),
+                              );
+                            }
+                            final e = tagCounts.entries.take(10).toList()[i - 1];
+                            return _TagFilterChip(
+                              label: '#${e.key}',
+                              isSelected: _selectedTags.contains(e.key),
+                              onTap: () {
+                                setState(() {
+                                  if (_selectedTags.contains(e.key)) {
+                                    _selectedTags.remove(e.key);
+                                  } else {
+                                    _selectedTags.add(e.key);
+                                  }
+                                });
+                              },
+                              count: e.value,
+                            );
+                          },
+                        ),
                       );
                     },
                   ),
@@ -312,7 +317,7 @@ class _NoteListCard extends ConsumerWidget {
       },
       child: GestureDetector(
         onTap: onTap,
-        child: GlassCardPro(
+        child: _FlatCard(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,7 +325,7 @@ class _NoteListCard extends ConsumerWidget {
               Row(
                 children: [
                   if (note.isPinned) ...[
-                    const Icon(Icons.push_pin, size: 14, color: AppColors.warning),
+                    const Icon(Icons.push_pin, size: 14, color: AppColors.primary),
                     const SizedBox(width: 4),
                   ],
                   if (note.isJournal && note.mood != null) ...[
@@ -330,7 +335,10 @@ class _NoteListCard extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       note.title.isEmpty ? 'Tanpa Judul' : note.title,
-                      style: theme.textTheme.titleMedium,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -341,8 +349,8 @@ class _NoteListCard extends ConsumerWidget {
                       note.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
                       size: 18,
                       color: note.isPinned
-                          ? AppColors.warning
-                          : theme.iconTheme.color?.withOpacity(0.3),
+                          ? AppColors.primary
+                          : Colors.white.withOpacity(0.3),
                     ),
                   ),
                 ],
@@ -350,7 +358,9 @@ class _NoteListCard extends ConsumerWidget {
               const SizedBox(height: 6),
               Text(
                 note.content,
-                style: theme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.white.withOpacity(0.6),
+                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -360,7 +370,7 @@ class _NoteListCard extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -371,6 +381,7 @@ class _NoteListCard extends ConsumerWidget {
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
+                            color: Colors.white.withOpacity(0.8),
                           ),
                         ),
                       ],
@@ -393,7 +404,10 @@ class _NoteListCard extends ConsumerWidget {
                     const Spacer(),
                   Text(
                     DateHelper.relativeTime(note.updatedAt),
-                    style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.4),
+                    ),
                   ),
                 ],
               ),
@@ -426,7 +440,7 @@ class _TagFilterChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary : theme.cardTheme.color,
           borderRadius: BorderRadius.circular(20),
@@ -441,7 +455,7 @@ class _TagFilterChip extends StatelessWidget {
               label,
               style: theme.textTheme.labelLarge?.copyWith(
                 fontSize: 11,
-                color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
+                color: isSelected ? AppColors.black : theme.textTheme.bodyMedium?.color,
               ),
             ),
             if (count != null && count! > 0) ...[
@@ -450,7 +464,7 @@ class _TagFilterChip extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.white.withOpacity(0.2)
+                      ? AppColors.black.withOpacity(0.1)
                       : Colors.grey.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -458,7 +472,7 @@ class _TagFilterChip extends StatelessWidget {
                   '$count',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 9,
-                    color: isSelected ? Colors.white : Colors.grey,
+                    color: isSelected ? AppColors.black : Colors.grey,
                   ),
                 ),
               ),
@@ -498,6 +512,35 @@ class _EmptyNotes extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Card flat gelap solid — senada dengan gaya card di Dashboard.
+class _FlatCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double radius;
+
+  const _FlatCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.radius = 16,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B1B1F),
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.06),
+          width: 1,
+        ),
+      ),
+      child: child,
     );
   }
 }
