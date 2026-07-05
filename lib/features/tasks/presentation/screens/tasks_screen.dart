@@ -19,6 +19,8 @@ class TasksScreen extends ConsumerStatefulWidget {
 class _TasksScreenState extends ConsumerState<TasksScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
   List<String> _selectedTags = [];
   bool _showTagFilter = false;
   TaskPriority? _selectedPriority;
@@ -37,6 +39,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -49,10 +52,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
   }
 
   bool get hasFilters =>
-      _selectedTags.isNotEmpty || _selectedPriority != null;
+      _searchQuery.isNotEmpty ||
+      _selectedTags.isNotEmpty ||
+      _selectedPriority != null;
 
   void _clearFilters() {
     setState(() {
+      _searchQuery = '';
+      _searchController.clear();
       _selectedTags = [];
       _selectedPriority = null;
     });
@@ -193,20 +200,33 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
             const SizedBox(height: 4),
           ],
 
-          // Priority Dropdown (kanan bawah)
+          // Search Tugas + Priority Dropdown (sebaris)
           Padding(
-            padding: EdgeInsets.only(
-              top: _showTagFilter ? 8 : 12,
-              right: 16,
-              bottom: 4,
+            padding: EdgeInsets.fromLTRB(
+              16,
+              _showTagFilter ? 8 : 12,
+              16,
+              4,
             ),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: _PriorityDropdown(
-                selected: _selectedPriority,
-                onChanged: (v) =>
-                    setState(() => _selectedPriority = v),
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _TaskSearchField(
+                    controller: _searchController,
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    onClear: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _PriorityDropdown(
+                  selected: _selectedPriority,
+                  onChanged: (v) =>
+                      setState(() => _selectedPriority = v),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -214,6 +234,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
               status: _currentStatus,
               showCompleted:
                   _currentStatus == null || _currentStatus == TaskStatus.done,
+              searchQuery: _searchQuery,
               selectedTags: _selectedTags,
               selectedPriority: _selectedPriority,
               hasFilters: hasFilters,
@@ -319,11 +340,54 @@ class _PriorityDropdown extends StatelessWidget {
   }
 }
 
+// ─── Search Field ───────────────────────────────────────────────────────────
+
+class _TaskSearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  const _TaskSearchField({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      height: 36,
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: 'Cari tugas...',
+          hintStyle: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+          prefixIcon: const Icon(Icons.search, size: 18),
+          suffixIcon: controller.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 16),
+                  onPressed: onClear,
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Task List Tab ─────────────────────────────────────────────────────────
 
 class _TaskListTab extends ConsumerWidget {
   final TaskStatus? status;
   final bool showCompleted;
+  final String searchQuery;
   final List<String> selectedTags;
   final TaskPriority? selectedPriority;
   final bool hasFilters;
@@ -331,6 +395,7 @@ class _TaskListTab extends ConsumerWidget {
   const _TaskListTab({
     required this.status,
     required this.showCompleted,
+    required this.searchQuery,
     required this.selectedTags,
     required this.selectedPriority,
     required this.hasFilters,
@@ -350,6 +415,15 @@ class _TaskListTab extends ConsumerWidget {
       error: (e, _) => Center(child: Text('Error: $e')),
       data: (tasks) {
         List<Task> filtered = tasks;
+
+        if (searchQuery.isNotEmpty) {
+          final query = searchQuery.toLowerCase();
+          filtered = filtered
+              .where((t) =>
+                  t.title.toLowerCase().contains(query) ||
+                  t.description.toLowerCase().contains(query))
+              .toList();
+        }
 
         if (selectedPriority != null) {
           filtered =
