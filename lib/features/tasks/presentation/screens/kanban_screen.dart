@@ -315,71 +315,66 @@ class _KanbanColumn extends ConsumerWidget {
                   ),
                 ),
 
-                // Task cards — constrained height, scroll aktif hanya saat
-                // kolom sedang "aktif". IgnorePointer mencegah list ini
-                // mencuri gesture drag/scroll saat tidak aktif.
+                // Task cards — constrained height. Scroll internal hanya
+                // aktif saat kolom "aktif" (physics), tapi card tetap bisa
+                // di-tap/drag kapan pun, aktif ataupun tidak.
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 280),
-                  child: IgnorePointer(
-                    ignoring: !isActive,
-                    child: tasksAsync.when(
-                      loading: () => const SizedBox(
-                        height: 60,
-                        child: Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
+                  child: tasksAsync.when(
+                    loading: () => const SizedBox(
+                      height: 60,
+                      child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                      error: (e, _) => SizedBox(
-                        height: 60,
-                        child: Center(child: Text('Error: $e')),
-                      ),
-                      data: (tasks) {
-                        if (tasks.isEmpty) {
-                          return SizedBox(
-                            height: 60,
-                            child: Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Text(
-                                  isHovering
-                                      ? 'Lepas di sini'
-                                      : (isActive
-                                          ? 'Tidak ada\ntugas'
-                                          : 'Ketuk untuk\naktifkan'),
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontSize: 11,
-                                    color: isHovering ? color : null,
-                                  ),
-                                  textAlign: TextAlign.center,
+                    ),
+                    error: (e, _) => SizedBox(
+                      height: 60,
+                      child: Center(child: Text('Error: $e')),
+                    ),
+                    data: (tasks) {
+                      if (tasks.isEmpty) {
+                        return SizedBox(
+                          height: 60,
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                isHovering ? 'Lepas di sini' : 'Tidak ada\ntugas',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontSize: 11,
+                                  color: isHovering ? color : null,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
-                          );
-                        }
-                        return ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-                          shrinkWrap: true,
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          itemCount: tasks.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
-                          itemBuilder: (_, i) {
-                            final task = tasks[i];
-                            if (task.id == draggedTaskId && draggedFromStatus == status) {
-                              return Opacity(
-                                opacity: 0.3,
-                                child: _KanbanCard(task: task, columnColor: color),
-                              );
-                            }
-                            return _DraggableKanbanCard(
-                              task: task,
-                              columnColor: color,
-                              onDragStarted: () => onDragStarted(task.id),
-                              onDragEnded: onDragEnded,
-                            );
-                          },
+                          ),
                         );
-                      },
-                    ),
+                      }
+                      return ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+                        shrinkWrap: true,
+                        physics: isActive
+                            ? const AlwaysScrollableScrollPhysics()
+                            : const NeverScrollableScrollPhysics(),
+                        itemCount: tasks.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (_, i) {
+                          final task = tasks[i];
+                          if (task.id == draggedTaskId && draggedFromStatus == status) {
+                            return Opacity(
+                              opacity: 0.3,
+                              child: _KanbanCard(task: task, columnColor: color),
+                            );
+                          }
+                          return _DraggableKanbanCard(
+                            task: task,
+                            columnColor: color,
+                            onDragStarted: () => onDragStarted(task.id),
+                            onDragEnded: onDragEnded,
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
               ],

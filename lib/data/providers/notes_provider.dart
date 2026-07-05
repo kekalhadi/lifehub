@@ -317,14 +317,16 @@ final notesTagCountsProvider = StreamProvider<Map<String, int>>((ref) async* {
   }
 });
 
-/// Tag usage counts scoped to **Tasks** module only.
-final tasksTagCountsProvider = StreamProvider<Map<String, int>>((ref) async* {
+/// Tag usage counts scoped to **Tasks** module only, filtered by status tab.
+final tasksTagCountsProvider =
+    StreamProvider.family<Map<String, int>, TaskStatus?>((ref, status) async* {
   final isar = await ref.watch(isarProvider.future);
 
   await for (final _ in isar.tasks.where().watch(fireImmediately: true)) {
     final tasks = await isar.tasks.where().findAll();
     final Map<String, int> counts = {};
     for (final task in tasks) {
+      if (status != null && task.status != status) continue;
       for (final tag in task.tags) {
         counts[tag] = (counts[tag] ?? 0) + 1;
       }

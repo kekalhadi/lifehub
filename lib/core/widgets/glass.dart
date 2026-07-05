@@ -6,13 +6,13 @@ import '../theme/app_theme.dart';
 class GlassColors {
   static Color bg(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
-          ? AppColors.glassDark
-          : AppColors.glassLight;
+          ? const Color.fromARGB(255, 30, 30, 30)
+          : const Color.fromARGB(255, 36, 36, 36);
 
   static Color border(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
-          ? AppColors.glassBorderDark
-          : AppColors.glassBorderLight;
+          ? const Color.fromARGB(255, 56, 56, 56)
+          : const Color.fromARGB(255, 51, 51, 51);
 }
 
 /// Container dengan efek glassmorphism: semi-transparan + border halus + blur.

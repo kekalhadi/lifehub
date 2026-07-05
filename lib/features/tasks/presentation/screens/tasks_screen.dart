@@ -16,17 +16,61 @@ class TasksScreen extends ConsumerStatefulWidget {
   ConsumerState<TasksScreen> createState() => _TasksScreenState();
 }
 
-class _TasksScreenState extends ConsumerState<TasksScreen> {
-  bool _showCompleted = false;
+class _TasksScreenState extends ConsumerState<TasksScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   List<String> _selectedTags = [];
   bool _showTagFilter = false;
+  TaskPriority? _selectedPriority;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() => _selectedPriority = null);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  TaskStatus? get _currentStatus {
+    if (_tabController.index == 0) return null;
+    if (_tabController.index == 1) return TaskStatus.todo;
+    if (_tabController.index == 2) return TaskStatus.inProgress;
+    if (_tabController.index == 3) return TaskStatus.done;
+    return null;
+  }
+
+  bool get hasFilters =>
+      _selectedTags.isNotEmpty || _selectedPriority != null;
+
+  void _clearFilters() {
+    setState(() {
+      _selectedTags = [];
+      _selectedPriority = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tugas'),
         actions: [
+          if (hasFilters)
+            TextButton(
+              onPressed: _clearFilters,
+              child: const Text('Reset', style: TextStyle(fontSize: 13)),
+            ),
           IconButton(
             icon: const Icon(Icons.view_kanban_outlined),
             tooltip: 'Kanban Board',
@@ -35,76 +79,144 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             ),
           ),
           IconButton(
-            icon: Icon(_showCompleted
-                ? Icons.visibility_off_outlined
-                : Icons.visibility_outlined),
-            tooltip: _showCompleted ? 'Sembunyikan selesai' : 'Tampilkan selesai',
-            onPressed: () => setState(() => _showCompleted = !_showCompleted),
-          ),
-          IconButton(
             icon: Icon(_showTagFilter ? Icons.tag : Icons.tag_outlined),
             onPressed: () => setState(() => _showTagFilter = !_showTagFilter),
             tooltip: 'Filter berdasarkan Tag',
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Column(
+            children: [
+              // Status Tabs
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: theme.inputDecorationTheme.fillColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(4),
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: theme.textTheme.bodyLarge?.color,
+                  unselectedLabelColor: theme.textTheme.bodyMedium?.color,
+                  indicator: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicatorPadding: EdgeInsets.zero,
+                  dividerColor: Colors.transparent,
+                  labelPadding: EdgeInsets.zero,
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                  ),
+                  tabs: const [
+                    Tab(text: 'Semua'),
+                    Tab(text: 'To Do'),
+                    Tab(text: 'In Progress'),
+                    Tab(text: 'Done'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       body: Column(
         children: [
+          // Tag Filter
           if (_showTagFilter) ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: ref.watch(tasksTagCountsProvider).when(
-                loading: () => const SizedBox(
-                    height: 30, child: CircularProgressIndicator()),
-                error: (_, __) => const SizedBox(height: 30),
-                data: (tagCounts) {
-                  if (tagCounts.isEmpty) {
-                    return const Text(
-                      'Belum ada tag. Buat tugas dengan tag untuk mulai memfilter.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    );
-                  }
-                  return SizedBox(
-                    height: 32,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: EdgeInsets.zero,
-                      itemCount: tagCounts.entries.take(10).length + 1,
-                      separatorBuilder: (_, __) => const SizedBox(width: 6),
-                      itemBuilder: (_, i) {
-                        if (i == 0) {
-                          return _TagFilterChip(
-                            label: 'Semua',
-                            isSelected: _selectedTags.isEmpty,
-                            onTap: () => setState(() => _selectedTags = []),
-                          );
-                        }
-                        final e = tagCounts.entries.take(10).toList()[i - 1];
-                        return _TagFilterChip(
-                          label: '#${e.key}',
-                          isSelected: _selectedTags.contains(e.key),
-                          onTap: () {
-                            setState(() {
-                              if (_selectedTags.contains(e.key)) {
-                                _selectedTags.remove(e.key);
-                              } else {
-                                _selectedTags.add(e.key);
-                              }
-                            });
-                          },
-                          count: e.value,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: ref
+                  .watch(tasksTagCountsProvider(_currentStatus))
+                  .when(
+                    loading: () => const SizedBox(
+                        height: 32, child: CircularProgressIndicator()),
+                    error: (_, __) => const SizedBox(height: 32),
+                    data: (tagCounts) {
+                      if (tagCounts.isEmpty) {
+                        return const Text(
+                          'Belum ada tag.',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey),
                         );
-                      },
-                    ),
-                  );
-                },
+                      }
+                      return SizedBox(
+                        height: 32,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: EdgeInsets.zero,
+                          itemCount:
+                              tagCounts.entries.take(10).length + 1,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 6),
+                          itemBuilder: (_, i) {
+                            if (i == 0) {
+                              return _TagFilterChip(
+                                label: 'Semua',
+                                isSelected: _selectedTags.isEmpty,
+                                onTap: () => setState(
+                                    () => _selectedTags = []),
+                              );
+                            }
+                            final e = tagCounts.entries
+                                .take(10)
+                                .toList()[i - 1];
+                            return _TagFilterChip(
+                              label: '#${e.key}',
+                              isSelected:
+                                  _selectedTags.contains(e.key),
+                              onTap: () {
+                                setState(() {
+                                  if (_selectedTags.contains(e.key)) {
+                                    _selectedTags.remove(e.key);
+                                  } else {
+                                    _selectedTags.add(e.key);
+                                  }
+                                });
+                              },
+                              count: e.value,
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+            ),
+            const SizedBox(height: 4),
+          ],
+
+          // Priority Dropdown (kanan bawah)
+          Padding(
+            padding: EdgeInsets.only(
+              top: _showTagFilter ? 8 : 12,
+              right: 16,
+              bottom: 4,
+            ),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: _PriorityDropdown(
+                selected: _selectedPriority,
+                onChanged: (v) =>
+                    setState(() => _selectedPriority = v),
               ),
             ),
-          ],
+          ),
           Expanded(
-            child: _DailyTasksTab(
-              showCompleted: _showCompleted,
+            child: _TaskListTab(
+              status: _currentStatus,
+              showCompleted:
+                  _currentStatus == null || _currentStatus == TaskStatus.done,
               selectedTags: _selectedTags,
+              selectedPriority: _selectedPriority,
+              hasFilters: hasFilters,
             ),
           ),
         ],
@@ -120,17 +232,117 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   }
 }
 
-// ─── Daily Tasks Tab ──────────────────────────────────────────────────────────
+// ─── Priority Dropdown ─────────────────────────────────────────────────────
 
-class _DailyTasksTab extends ConsumerWidget {
+class _PriorityDropdown extends StatelessWidget {
+  final TaskPriority? selected;
+  final ValueChanged<TaskPriority?> onChanged;
+
+  const _PriorityDropdown({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final items = <TaskPriority?>[
+      null,
+      TaskPriority.high,
+      TaskPriority.medium,
+      TaskPriority.low,
+    ];
+
+    final labels = {
+      null: 'Semua Prioritas',
+      TaskPriority.high: 'Prioritas Tinggi',
+      TaskPriority.medium: 'Prioritas Sedang',
+      TaskPriority.low: 'Prioritas Rendah',
+    };
+
+    final colors = {
+      null: null,
+      TaskPriority.high: AppColors.priorityHigh,
+      TaskPriority.medium: AppColors.priorityMedium,
+      TaskPriority.low: AppColors.priorityLow,
+    };
+
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: theme.inputDecorationTheme.fillColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: selected != null
+              ? colors[selected]!.withOpacity(0.4)
+              : theme.dividerColor.withOpacity(0.5),
+          width: 1.2,
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<TaskPriority?>(
+          value: selected,
+          isDense: true,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+          style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
+          items: items.map((p) {
+            final color = colors[p];
+            final hasPriority = p != null;
+            return DropdownMenuItem<TaskPriority?>(
+              value: p,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasPriority) ...[
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ] else ...[
+                    Icon(Icons.tune_rounded,
+                        size: 16, color: theme.textTheme.bodyMedium?.color),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(labels[p]!),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (v) => onChanged(v),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Task List Tab ─────────────────────────────────────────────────────────
+
+class _TaskListTab extends ConsumerWidget {
+  final TaskStatus? status;
   final bool showCompleted;
   final List<String> selectedTags;
+  final TaskPriority? selectedPriority;
+  final bool hasFilters;
 
-  const _DailyTasksTab({required this.showCompleted, required this.selectedTags});
+  const _TaskListTab({
+    required this.status,
+    required this.showCompleted,
+    required this.selectedTags,
+    required this.selectedPriority,
+    required this.hasFilters,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final filter = TaskFilter(onlyStandalone: true, showCompleted: showCompleted);
+    final filter = TaskFilter(
+      onlyStandalone: true,
+      showCompleted: showCompleted,
+      status: status,
+    );
     final tasksAsync = ref.watch(allTasksStreamProvider(filter));
 
     return tasksAsync.when(
@@ -139,6 +351,11 @@ class _DailyTasksTab extends ConsumerWidget {
       data: (tasks) {
         List<Task> filtered = tasks;
 
+        if (selectedPriority != null) {
+          filtered =
+              filtered.where((t) => t.priority == selectedPriority).toList();
+        }
+
         if (selectedTags.isNotEmpty) {
           filtered = filtered
               .where((t) => selectedTags.any((tag) => t.tags.contains(tag)))
@@ -146,15 +363,15 @@ class _DailyTasksTab extends ConsumerWidget {
         }
 
         if (filtered.isEmpty) {
-          return const _EmptyTasks();
+          return _EmptyTasks(hasFilters: hasFilters);
         }
 
         final highPriority =
-        filtered.where((t) => t.priority == TaskPriority.high).toList();
+            filtered.where((t) => t.priority == TaskPriority.high).toList();
         final medPriority =
-        filtered.where((t) => t.priority == TaskPriority.medium).toList();
+            filtered.where((t) => t.priority == TaskPriority.medium).toList();
         final lowPriority =
-        filtered.where((t) => t.priority == TaskPriority.low).toList();
+            filtered.where((t) => t.priority == TaskPriority.low).toList();
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
@@ -165,9 +382,9 @@ class _DailyTasksTab extends ConsumerWidget {
                   color: AppColors.priorityHigh),
               const SizedBox(height: 8),
               ...highPriority.map((t) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _TaskCard(task: t),
-              )),
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _TaskCard(task: t),
+                  )),
               const SizedBox(height: 8),
             ],
             if (medPriority.isNotEmpty) ...[
@@ -176,9 +393,9 @@ class _DailyTasksTab extends ConsumerWidget {
                   color: AppColors.priorityMedium),
               const SizedBox(height: 8),
               ...medPriority.map((t) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _TaskCard(task: t),
-              )),
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _TaskCard(task: t),
+                  )),
               const SizedBox(height: 8),
             ],
             if (lowPriority.isNotEmpty) ...[
@@ -187,9 +404,9 @@ class _DailyTasksTab extends ConsumerWidget {
                   color: AppColors.priorityLow),
               const SizedBox(height: 8),
               ...lowPriority.map((t) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _TaskCard(task: t),
-              )),
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _TaskCard(task: t),
+                  )),
             ],
           ],
         );
@@ -388,7 +605,9 @@ class _PriorityLabel extends StatelessWidget {
 }
 
 class _EmptyTasks extends StatelessWidget {
-  const _EmptyTasks();
+  final bool hasFilters;
+
+  const _EmptyTasks({this.hasFilters = false});
 
   @override
   Widget build(BuildContext context) {
@@ -398,14 +617,18 @@ class _EmptyTasks extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconBox(
-            icon: Icons.task_alt_outlined,
+            icon: hasFilters
+                ? Icons.search_off_rounded
+                : Icons.task_alt_outlined,
             size: 72,
             iconSize: 36,
             radius: 20,
           ),
           const SizedBox(height: 16),
           Text(
-            'Tidak ada tugas hari ini\nTap + untuk tambah tugas',
+            hasFilters
+                ? 'Tidak ada tugas yang cocok dengan filter'
+                : 'Tidak ada tugas hari ini\nTap + untuk tambah tugas',
             style: theme.textTheme.bodyLarge,
             textAlign: TextAlign.center,
           ),
@@ -414,7 +637,6 @@ class _EmptyTasks extends StatelessWidget {
     );
   }
 }
-
 class _TagFilterChip extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -476,6 +698,35 @@ class _TagFilterChip extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Card flat gelap solid — senada dengan gaya card di Dashboard & Catatan.
+class _FlatCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double radius;
+
+  const _FlatCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.radius = 16,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B1B1F),
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.06),
+          width: 1,
+        ),
+      ),
+      child: child,
     );
   }
 }

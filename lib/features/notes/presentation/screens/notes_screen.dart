@@ -6,6 +6,7 @@ import '../../../../core/widgets/glass.dart';
 import '../../../../core/widgets/category_picker.dart';
 import '../../../../data/models/note_model.dart';
 import '../../../../data/providers/notes_provider.dart';
+import 'package:flutter/services.dart';
 import 'note_editor_screen.dart';
 import 'add_category_screen.dart';
 import 'category_management_screen.dart';
@@ -317,7 +318,9 @@ class _NoteListCard extends ConsumerWidget {
       },
       child: GestureDetector(
         onTap: onTap,
-        child: _FlatCard(
+        onLongPressStart: (details) =>
+            _showNoteMenu(context, ref, details.globalPosition, category),
+        child: GlassCard(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,6 +419,54 @@ class _NoteListCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showNoteMenu(
+    BuildContext context,
+    WidgetRef ref,
+    Offset position,
+    dynamic category,
+  ) async {
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(position, position),
+        Offset.zero & overlay.size,
+      ),
+      items: const [
+        PopupMenuItem(
+          value: 'copy',
+          child: Row(
+            children: [
+              Icon(Icons.copy_rounded, size: 18),
+              SizedBox(width: 10),
+              Text('Salin'),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (selected == 'copy') {
+      final title = note.title.isEmpty ? 'Tanpa Judul' : note.title;
+      final tagsText = note.tags.isNotEmpty
+          ? ' | ${note.tags.map((t) => '#$t').join(' ')}'
+          : '';
+      final text =
+          '* ${category.name}$tagsText\n\n   $title :\n   ${note.content}';
+
+      await Clipboard.setData(ClipboardData(text: text));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Catatan disalin'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 }
 

@@ -9,6 +9,7 @@ import '../../../../data/providers/notes_provider.dart';
 import '../../../../data/providers/tasks_provider.dart';
 import '../../../../data/models/task_model.dart';
 import 'dart:ui';
+import '../../../../core/widgets/glass.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -559,7 +560,7 @@ class _DashboardTaskCard extends StatelessWidget {
     final theme = Theme.of(context);
     final priorityColor = _priorityColor(task.priority);
 
-    return _FlatCard(
+    return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       radius: 16,
       child: Row(
@@ -599,6 +600,18 @@ class _DashboardTaskCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (task.description.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    task.description,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 if (task.tags.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
@@ -699,7 +712,7 @@ class _NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return _FlatCard(
+    return GlassCard(
       padding: const EdgeInsets.all(14),
       radius: 16,
       child: SizedBox(

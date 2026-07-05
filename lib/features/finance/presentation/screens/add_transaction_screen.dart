@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/app_alert.dart';
 import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/finance_model.dart';
 import '../../../../data/providers/finance_provider.dart';
@@ -86,7 +88,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             TextField(
               controller: _amountController,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                _ThousandSeparatorFormatter(),
+              ],
               style: theme.textTheme.displayMedium?.copyWith(
                 color: _type == TransactionType.income
                     ? AppColors.income
@@ -329,22 +334,53 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   Future<void> _save() async {
-    final amountText = _amountController.text.trim();
-    if (amountText.isEmpty || amountText == '0') {
-      _showSnack('Masukkan jumlah transaksi');
+    final rawAmount = _amountController.text.replaceAll('.', '');
+    if (rawAmount.isEmpty || rawAmount == '0') {
+      await AppAlert.show(
+        context,
+        title: 'Jumlah Tidak Valid',
+        message: 'Masukkan jumlah transaksi yang valid.',
+      );
       return;
     }
     if (_selectedCategory == null) {
-      _showSnack('Pilih kategori transaksi');
+      await AppAlert.show(
+        context,
+        title: 'Kategori Belum Dipilih',
+        message: 'Silakan pilih kategori transaksi.',
+      );
       return;
     }
     if (_selectedWallet == null) {
-      _showSnack('Pilih dompet/rekening');
+      await AppAlert.show(
+        context,
+        title: 'Dompet Belum Dipilih',
+        message: 'Silakan pilih dompet atau rekening.',
+      );
       return;
     }
 
+    final amount = double.parse(rawAmount);
+    if (_type == TransactionType.expense) {
+      final wallets = ref.read(walletsProvider).value ?? [];
+      final wallet = wallets.firstWhere(
+        (w) => w.name == _selectedWallet!.name,
+        orElse: () => wallets.first,
+      );
+      if (amount > wallet.balance) {
+        await AppAlert.show(
+          context,
+          title: 'Saldo Tidak Cukup',
+          message:
+              'Saldo ${_selectedWallet!.name} hanya Rp ${CurrencyFormatter.format(wallet.balance)}. Nominal yang diinput melebihi saldo yang tersedia.',
+          type: AppAlertType.warning,
+        );
+        return;
+      }
+    }
+
     final transaction = Transaction()
-      ..amount = double.parse(amountText)
+      ..amount = amount
       ..type = _type
       ..categoryName = _selectedCategory!.name
       ..categoryIcon = _selectedCategory!.icon
@@ -358,10 +394,23 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     if (mounted) Navigator.of(context).pop();
   }
+}
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+class _ThousandSeparatorFormatter extends TextInputFormatter {
+  final _formatter = NumberFormat('#,###', 'id_ID');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final raw = newValue.text.replaceAll('.', '');
+    if (raw.isEmpty) return newValue.copyWith(text: '');
+    final num = int.tryParse(raw) ?? 0;
+    final formatted = _formatter.format(num);
+    return newValue.copyWith(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

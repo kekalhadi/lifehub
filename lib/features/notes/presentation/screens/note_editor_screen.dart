@@ -79,8 +79,13 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
       onPopInvokedWithResult: (didPop, _) async {
         if (!didPop && _hasChanges) {
           final save = await _showSaveDialog();
-          if (save == true) await _save();
-          if (mounted) Navigator.of(context).pop();
+          if (save == true) {
+            // _save() sudah menangani pop setelah sukses simpan
+            await _save();
+          } else if (mounted) {
+            // Abaikan perubahan -> langsung keluar tanpa simpan
+            Navigator.of(context).pop();
+          }
         }
       },
       child: Scaffold(

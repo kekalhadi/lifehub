@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/widgets/app_alert.dart';
 import '../../../../core/widgets/glass.dart';
 import '../../../../core/widgets/tag_autocomplete_field.dart';
 import '../../../../data/models/task_model.dart';
@@ -48,7 +51,9 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
       _tags = List.from(task.tags);
       _hasBudget = task.hasBudget;
       _budgetType = task.budgetType ?? 'expense';
-      _amountController.text = task.budgetAmount?.toStringAsFixed(0) ?? '';
+      _amountController.text = task.budgetAmount != null
+          ? NumberFormat('#,###', 'id_ID').format(task.budgetAmount!.toInt())
+          : '';
       _selectedBudgetCategoryName = task.budgetCategoryName;
       _selectedBudgetCategoryIcon = task.budgetCategoryIcon;
       _selectedBudgetWalletName = task.budgetWalletName;
@@ -291,6 +296,10 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
               TextField(
                 controller: _amountController,
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  _ThousandSeparatorFormatter(),
+                ],
                 decoration: const InputDecoration(
                   hintText: 'Masukkan nominal...',
                   prefixText: 'Rp ',
@@ -365,34 +374,50 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
 
   Future<void> _save() async {
     if (_titleController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nama tugas tidak boleh kosong'),
-          behavior: SnackBarBehavior.floating,
-        ),
+      await AppAlert.show(
+        context,
+        title: 'Nama Tugas Kosong',
+        message: 'Masukkan nama tugas terlebih dahulu.',
       );
       return;
     }
 
     if (_hasBudget) {
-      final amount = double.tryParse(_amountController.text.replaceAll(',', ''));
+      final rawAmount = _amountController.text.replaceAll('.', '');
+      final amount = double.tryParse(rawAmount);
       if (amount == null || amount <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nominal anggaran harus diisi'),
-            behavior: SnackBarBehavior.floating,
-          ),
+        await AppAlert.show(
+          context,
+          title: 'Nominal Tidak Valid',
+          message: 'Masukkan nominal anggaran yang valid.',
         );
         return;
       }
       if (_budgetType == 'expense' && _selectedBudgetCategoryName == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Kategori anggaran harus dipilih'),
-            behavior: SnackBarBehavior.floating,
-          ),
+        await AppAlert.show(
+          context,
+          title: 'Kategori Belum Dipilih',
+          message: 'Silakan pilih kategori anggaran.',
         );
         return;
+      }
+      if (_budgetType == 'expense') {
+        final walletName = _selectedBudgetWalletName ?? 'Uang Tunai';
+        final wallets = ref.read(walletsProvider).value ?? [];
+        final wallet = wallets.firstWhere(
+          (w) => w.name == walletName,
+          orElse: () => wallets.first,
+        );
+        if (amount > wallet.balance) {
+          await AppAlert.show(
+            context,
+            title: 'Saldo Tidak Cukup',
+            message:
+                'Saldo $walletName hanya Rp ${CurrencyFormatter.format(wallet.balance)}. Nominal anggaran melebihi saldo yang tersedia.',
+            type: AppAlertType.warning,
+          );
+          return;
+        }
       }
     }
 
@@ -411,7 +436,7 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
     // Budget fields
     task.hasBudget = _hasBudget;
     if (_hasBudget) {
-      task.budgetAmount = double.tryParse(_amountController.text.replaceAll(',', ''));
+      task.budgetAmount = double.tryParse(_amountController.text.replaceAll('.', ''));
       task.budgetType = _budgetType;
       task.budgetCategoryName = _selectedBudgetCategoryName;
       task.budgetCategoryIcon = _selectedBudgetCategoryIcon;
@@ -632,6 +657,25 @@ class _WalletPicker extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ThousandSeparatorFormatter extends TextInputFormatter {
+  final _formatter = NumberFormat('#,###', 'id_ID');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final raw = newValue.text.replaceAll('.', '');
+    if (raw.isEmpty) return newValue.copyWith(text: '');
+    final num = int.tryParse(raw) ?? 0;
+    final formatted = _formatter.format(num);
+    return newValue.copyWith(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
