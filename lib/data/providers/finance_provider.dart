@@ -116,6 +116,64 @@ final budgetStatusProvider = FutureProvider.family<List<BudgetStatus>, DateRange
   }).toList();
 });
 
+enum ExpenseTrendTimeframe { week, month1, month3, month6, year1, all }
+
+final expenseTrendProvider = FutureProvider.family<ExpenseTrendData, ExpenseTrendTimeframe>((ref, timeframe) async {
+  final isar = await ref.watch(isarProvider.future);
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+  DateTime start;
+  switch (timeframe) {
+    case ExpenseTrendTimeframe.week:
+      start = today.subtract(const Duration(days: 6));
+      start = DateTime(start.year, start.month, start.day);
+    case ExpenseTrendTimeframe.month1:
+      start = DateTime(now.year, now.month - 1, now.day);
+    case ExpenseTrendTimeframe.month3:
+      start = DateTime(now.year, now.month - 3, now.day);
+    case ExpenseTrendTimeframe.month6:
+      start = DateTime(now.year, now.month - 6, now.day);
+    case ExpenseTrendTimeframe.year1:
+      start = DateTime(now.year - 1, now.month, now.day);
+    case ExpenseTrendTimeframe.all:
+      start = DateTime(2020);
+  }
+
+  final transactions = await isar.transactions
+      .filter()
+      .typeEqualTo(TransactionType.expense)
+      .dateBetween(start, today)
+      .sortByDate()
+      .findAll();
+
+  if (transactions.isEmpty) {
+    return ExpenseTrendData(labels: [], values: [], total: 0);
+  }
+
+  final isDaily = timeframe == ExpenseTrendTimeframe.week;
+  final isMonthly = timeframe == ExpenseTrendTimeframe.year1 || timeframe == ExpenseTrendTimeframe.all;
+
+  final Map<String, double> grouped = {};
+  for (final t in transactions) {
+    String key;
+    if (isDaily) {
+      key = '${t.date.day}/${t.date.month}';
+    } else if (isMonthly) {
+      key = '${t.date.month}/${t.date.year}';
+    } else {
+      key = '${t.date.day}/${t.date.month}';
+    }
+    grouped[key] = (grouped[key] ?? 0) + t.amount;
+  }
+
+  final labels = grouped.keys.toList();
+  final values = grouped.values.toList();
+  final total = values.fold(0.0, (a, b) => a + b);
+
+  return ExpenseTrendData(labels: labels, values: values, total: total);
+});
+
 class FinanceNotifier extends Notifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncValue.data(null);
@@ -420,5 +478,17 @@ class BudgetStatus {
     required this.categoryIcon,
     required this.budget,
     required this.spent,
+  });
+}
+
+class ExpenseTrendData {
+  final List<String> labels;
+  final List<double> values;
+  final double total;
+
+  const ExpenseTrendData({
+    required this.labels,
+    required this.values,
+    required this.total,
   });
 }

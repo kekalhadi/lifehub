@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../core/widgets/glass.dart';
+import '../../../../core/widgets/expense_trend_chart.dart';
 import '../../../../data/models/finance_model.dart';
 import '../../../../data/providers/finance_provider.dart';
 import '../../../../data/providers/savings_provider.dart';
@@ -342,6 +343,14 @@ class _TransactionsTabState extends ConsumerState<_TransactionsTab> {
                 ),
               ),
             ],
+          ),
+        ),
+
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: GlassCardPro(
+            padding: const EdgeInsets.all(20),
+            child: const ExpenseTrendChart(),
           ),
         ),
 

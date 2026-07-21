@@ -14,6 +14,7 @@ import '../../../../data/providers/profile_provider.dart';
 import '../../../../data/models/task_model.dart';
 import 'dart:ui';
 import '../../../../core/widgets/glass.dart';
+import '../../../../core/widgets/expense_trend_chart.dart';
 import '../../../../features/tasks/presentation/screens/tasks_screen.dart';
 import '../../../../features/profile/presentation/screens/profile_screen.dart';
 import '../../../../features/notifications/presentation/screens/notifications_screen.dart';
@@ -58,6 +59,20 @@ class DashboardScreen extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
                   child: _FinanceSummaryCard(),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+              // Expense Trend Chart
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  child: _FlatCard(
+                    padding: const EdgeInsets.all(20),
+                    radius: 20,
+                    child: const ExpenseTrendChart(),
+                  ),
                 ),
               ),
 
