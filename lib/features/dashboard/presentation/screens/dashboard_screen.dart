@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -5,11 +6,18 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../data/providers/finance_provider.dart';
+import '../../../../data/providers/savings_provider.dart';
+import '../../../../data/models/finance_model.dart';
 import '../../../../data/providers/notes_provider.dart';
 import '../../../../data/providers/tasks_provider.dart';
+import '../../../../data/providers/profile_provider.dart';
 import '../../../../data/models/task_model.dart';
 import 'dart:ui';
 import '../../../../core/widgets/glass.dart';
+import '../../../../features/tasks/presentation/screens/tasks_screen.dart';
+import '../../../../features/profile/presentation/screens/profile_screen.dart';
+import '../../../../features/notifications/presentation/screens/notifications_screen.dart';
+import '../../../../features/finance/presentation/screens/savings_detail_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -117,15 +125,26 @@ class _FlatCard extends StatelessWidget {
   }
 }
 
-class _DashboardHeader extends StatelessWidget {
+class _DashboardHeader extends ConsumerWidget {
   final String greeting;
   final DateTime now;
 
   const _DashboardHeader({required this.greeting, required this.now});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final profileAsync = ref.watch(profileStreamProvider);
+    final missedCountAsync = ref.watch(missedTasksCountProvider);
+
+    final displayName = profileAsync.whenOrNull(
+      data: (p) => (p != null && p.name.isNotEmpty) ? p.name : null,
+    );
+    final avatarPath = profileAsync.whenOrNull<String?>(
+      data: (p) => p?.avatarPath,
+    );
+    final missedCount = missedCountAsync.whenOrNull(data: (c) => c) ?? 0;
+
     return Container(
       padding: EdgeInsets.fromLTRB(
         20, MediaQuery.of(context).padding.top + 20, 20, 24,
@@ -140,7 +159,7 @@ class _DashboardHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    greeting,
+                    displayName != null ? 'Halo, $displayName' : greeting,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: Colors.white.withOpacity(0.6),
                       fontWeight: FontWeight.w500,
@@ -156,20 +175,174 @@ class _DashboardHeader extends StatelessWidget {
                   ),
                 ],
               ),
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+              GestureDetector(
+                onTap: () => _showProfileMenu(context, missedCount),
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.08),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: avatarPath != null && File(avatarPath).existsSync()
+                            ? Image.file(
+                                File(avatarPath),
+                                fit: BoxFit.cover,
+                              )
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.white70,
+                                size: 22,
+                              ),
+                      ),
+                    ),
+                    if (missedCount > 0)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xFFEF4444),
+                          ),
+                          child: Center(
+                            child: Text(
+                              missedCount > 9 ? '9+' : '$missedCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                child: const Icon(Icons.notifications_outlined,
-                    color: Colors.white70, size: 22),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showProfileMenu(BuildContext context, int missedCount) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1B1B1F),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.06), width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _MenuTile(
+              icon: Icons.person_outline,
+              label: 'Profil',
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
+              },
+            ),
+            _MenuTile(
+              icon: Icons.notifications_outlined,
+              label: 'Notifikasi',
+              badge: missedCount,
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int badge;
+  final VoidCallback onTap;
+
+  const _MenuTile({
+    required this.icon,
+    required this.label,
+    this.badge = 0,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white70, size: 22),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            if (badge > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  badge > 99 ? '99+' : '$badge',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 20),
+          ],
+        ),
       ),
     );
   }
@@ -179,7 +352,8 @@ class _FinanceSummaryCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final summaryAsync = ref.watch(monthlySummaryProvider);
+    final summaryAsync = ref.watch(monthlySummaryProvider(DateRange.thisMonth()));
+    final savingsAsync = ref.watch(oldestSavingsCategoriesProvider);
 
     return ClipRRect(
         borderRadius: BorderRadius.circular(20),
@@ -187,7 +361,6 @@ class _FinanceSummaryCard extends ConsumerWidget {
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
             decoration: BoxDecoration(
-              // Transparan dengan sedikit tint putih agar terasa "kaca"
               color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
@@ -195,7 +368,6 @@ class _FinanceSummaryCard extends ConsumerWidget {
                 width: 1,
               ),
               boxShadow: [
-                // Outer glow lembut
                 BoxShadow(
                   color: AppColors.primary.withOpacity(0.08),
                   blurRadius: 24,
@@ -205,7 +377,6 @@ class _FinanceSummaryCard extends ConsumerWidget {
             ),
             child: Stack(
               children: [
-                // Inner glow: gradient tipis dari tepi ke dalam
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
@@ -223,7 +394,6 @@ class _FinanceSummaryCard extends ConsumerWidget {
                     ),
                   ),
                 ),
-                // Inner glow tambahan di edge atas (highlight kaca)
                 Positioned(
                   top: 0,
                   left: 0,
@@ -241,7 +411,6 @@ class _FinanceSummaryCard extends ConsumerWidget {
                     ),
                   ),
                 ),
-                // Konten asli
                 Padding(
                   padding: const EdgeInsets.all(20),
                   child: summaryAsync.when(
@@ -324,6 +493,26 @@ class _FinanceSummaryCard extends ConsumerWidget {
                             ),
                           ],
                         ),
+                        savingsAsync.when(
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, __) => const SizedBox.shrink(),
+                          data: (categories) {
+                            if (categories.isEmpty) return const SizedBox.shrink();
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 18),
+                                Container(
+                                  height: 1,
+                                  width: double.infinity,
+                                  color: Colors.white.withOpacity(0.10),
+                                ),
+                                const SizedBox(height: 16),
+                                ...categories.map((cat) => _SavingsProgressCard(category: cat)),
+                              ],
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -396,7 +585,7 @@ class _FinanceStat extends StatelessWidget {
 class _BudgetAlertSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final budgetsAsync = ref.watch(budgetStatusProvider);
+    final budgetsAsync = ref.watch(budgetStatusProvider(DateRange.thisMonth()));
 
     return budgetsAsync.when(
       loading: () => const SizedBox.shrink(),
@@ -503,45 +692,124 @@ class _TodayTasksSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final tasksAsync = ref.watch(todayTasksStreamProvider);
+    final tasksAsync = ref.watch(allTodayTasksStreamProvider);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: tasksAsync.when(
+        loading: () => const _FlatCard(
+          child: SizedBox(
+            height: 40,
+            child: Center(
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
+            ),
+          ),
+        ),
+        error: (_, __) => _FlatCard(
+          child: Text(
+            'Gagal memuat tugas',
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
+          ),
+        ),
+        data: (tasks) {
+          if (tasks.isEmpty) {
+            return const _FlatCard(
+              child: _EmptyState(
+                icon: Icons.check_circle_outline_rounded,
+                message: 'Tidak ada tugas untuk hari ini.',
+              ),
+            );
+          }
+          return _TodayTasksCard(tasks: tasks);
+        },
+      ),
+    );
+  }
+}
+
+class _TodayTasksCard extends StatelessWidget {
+  final List<Task> tasks;
+
+  const _TodayTasksCard({required this.tasks});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final total = tasks.length;
+    final completed = tasks.where((t) => t.isCompleted).length;
+    final inProgress = tasks
+        .where((t) => !t.isCompleted && t.status == TaskStatus.inProgress)
+        .length;
+    final todo = tasks
+        .where((t) => !t.isCompleted && t.status == TaskStatus.todo)
+        .length;
+    final percentage = total > 0 ? completed / total : 0.0;
+
+    return _FlatCard(
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader(
-            title: 'Tugas Hari Ini',
-            icon: Icons.check_circle_outline_rounded,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tugas Hari Ini',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const TasksScreen()),
+                ),
+                child: Text(
+                  'Lihat Semua',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          tasksAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54)),
-            error: (_, __) => Text('Gagal memuat tugas', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70)),
-            data: (tasks) {
-              if (tasks.isEmpty) {
-                return const _EmptyState(
-                  icon: Icons.check_circle_outline_rounded,
-                  message: 'Tidak ada tugas untuk hari ini.',
-                );
-              }
-              final displayTasks = tasks.take(4).toList();
-              return Column(
-                children: [
-                  ...displayTasks.map((task) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _DashboardTaskCard(task: task, ref: ref),
-                  )),
-                  if (tasks.length > 4)
-                    Text(
-                      '+${tasks.length - 4} tugas lainnya',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.primary, fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                ],
-              );
-            },
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$completed/$total Selesai',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: Colors.white.withOpacity(0.6),
+                ),
+              ),
+              Text(
+                '${(percentage * 100).round()}%',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: LinearProgressIndicator(
+              value: percentage,
+              minHeight: 8,
+              backgroundColor: Colors.white.withOpacity(0.12),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _TaskStatusDot(label: '$inProgress Diproses'),
+              const SizedBox(width: 24),
+              _TaskStatusDot(label: '$todo Belum Dikerjakan'),
+            ],
           ),
         ],
       ),
@@ -549,114 +817,35 @@ class _TodayTasksSection extends ConsumerWidget {
   }
 }
 
-class _DashboardTaskCard extends StatelessWidget {
-  final Task task;
-  final WidgetRef ref;
+class _TaskStatusDot extends StatelessWidget {
+  final String label;
 
-  const _DashboardTaskCard({required this.task, required this.ref});
+  const _TaskStatusDot({required this.label});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final priorityColor = _priorityColor(task.priority);
-
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      radius: 16,
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => ref.read(tasksNotifierProvider.notifier).toggleComplete(task),
-            child: Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: task.isCompleted ? AppColors.primary : Colors.white.withOpacity(0.3),
-                  width: 2,
-                ),
-                color: task.isCompleted ? AppColors.primary : Colors.transparent,
-              ),
-              child: task.isCompleted
-                  ? const Icon(Icons.check, color: Colors.white, size: 13)
-                  : null,
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withOpacity(0.4),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task.title,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                    color: task.isCompleted
-                        ? Colors.white.withOpacity(0.4)
-                        : Colors.white,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (task.description.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    task.description,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.5),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                if (task.tags.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    task.tags.map((t) => '#$t').join(' '),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontSize: 11,
-                      color: AppColors.primary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                if (task.dueDate != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    DateHelper.formatDate(task.dueDate!),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontSize: 11,
-                      color: DateHelper.isOverdue(task.dueDate!)
-                          ? AppColors.primary
-                          : Colors.white.withOpacity(0.5),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontSize: 12,
+            color: Colors.white.withOpacity(0.55),
           ),
-          Container(
-            width: 8, height: 8,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: priorityColor,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
-  }
-
-  Color _priorityColor(TaskPriority priority) {
-    switch (priority) {
-      case TaskPriority.high: return AppColors.primary;
-      case TaskPriority.medium: return Colors.white.withOpacity(0.5);
-      case TaskPriority.low: return Colors.white.withOpacity(0.25);
-    }
   }
 }
 
@@ -752,6 +941,101 @@ class _NoteCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SavingsProgressCard extends StatelessWidget {
+  final SavingsCategory category;
+
+  const _SavingsProgressCard({required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasTarget = category.targetAmount != null && category.targetAmount! > 0;
+    final percentage = hasTarget
+        ? (category.currentAmount / category.targetAmount!).clamp(0.0, 1.0) as double
+        : null;
+    final isCompleted = percentage != null && percentage >= 1.0;
+
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => SavingsDetailScreen(category: category)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        category.name,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.white.withOpacity(0.6),
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isCompleted) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Tercapai',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (hasTarget)
+                Text(
+                  '${CurrencyFormatter.format(category.currentAmount)} / ${CurrencyFormatter.format(category.targetAmount!)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                )
+              else
+                Text(
+                  CurrencyFormatter.format(category.currentAmount),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                ),
+            ],
+          ),
+          if (hasTarget) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: percentage,
+                backgroundColor: Colors.white.withOpacity(0.08),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isCompleted ? AppColors.primary : AppColors.secondary,
+                ),
+                minHeight: 6,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ import '../../core/utils/category_icons.dart';
 import '../models/note_model.dart';
 import '../models/finance_model.dart';
 import '../models/task_model.dart';
+import '../models/profile_model.dart';
 
 final isarProvider = FutureProvider<Isar>((ref) async {
   final dir = await getApplicationDocumentsDirectory();
@@ -16,9 +17,11 @@ final isarProvider = FutureProvider<Isar>((ref) async {
       FinanceCategorySchema,
       WalletSchema,
       TransactionSchema,
-      SavingsGoalSchema,
+      SavingsCategorySchema,
+      SavingsLedgerSchema,
       TaskSchema,
       ProjectSchema,
+      UserProfileSchema,
     ],
     directory: dir.path,
     name: 'lifehub_db',
@@ -132,101 +135,16 @@ Future<void> _seedDefaultData(Isar isar) async {
   // === Migrasi emoji lama → nama ikon (finance) ===
   await _migrateFinanceIcons(isar);
 
-  // Seed default finance categories if empty
-  final catCount = await isar.financeCategorys.count();
-  if (catCount == 0) {
-    await isar.writeTxn(() async {
-      final expenseCategories = [
-        FinanceCategory()
-          ..name = 'Makanan & Minuman'
-          ..icon = 'ramen_dining'
-          ..type = TransactionType.expense
-          ..budgetLimit = 1000000
-          ..isDefault = true,
-        FinanceCategory()
-          ..name = 'Transportasi'
-          ..icon = 'directions_car'
-          ..type = TransactionType.expense
-          ..isDefault = true,
-        FinanceCategory()
-          ..name = 'Belanja'
-          ..icon = 'shopping_cart'
-          ..type = TransactionType.expense
-          ..isDefault = true,
-        FinanceCategory()
-          ..name = 'Hiburan'
-          ..icon = 'sports_esports'
-          ..type = TransactionType.expense
-          ..isDefault = true,
-        FinanceCategory()
-          ..name = 'Kesehatan'
-          ..icon = 'medication'
-          ..type = TransactionType.expense
-          ..isDefault = true,
-        FinanceCategory()
-          ..name = 'Pendidikan'
-          ..icon = 'menu_book'
-          ..type = TransactionType.expense
-          ..isDefault = true,
-        FinanceCategory()
-          ..name = 'Tagihan'
-          ..icon = 'receipt_long'
-          ..type = TransactionType.expense
-          ..isDefault = true,
-        FinanceCategory()
-          ..name = 'Lainnya'
-          ..icon = 'inventory_2'
-          ..type = TransactionType.expense
-          ..isDefault = true,
-      ];
-      final incomeCategories = [
-        FinanceCategory()
-          ..name = 'Gaji'
-          ..icon = 'work'
-          ..type = TransactionType.income
-          ..isDefault = true,
-        FinanceCategory()
-          ..name = 'Freelance'
-          ..icon = 'laptop'
-          ..type = TransactionType.income
-          ..isDefault = true,
-        FinanceCategory()
-          ..name = 'Investasi'
-          ..icon = 'trending_up'
-          ..type = TransactionType.income
-          ..isDefault = true,
-        FinanceCategory()
-          ..name = 'Lainnya'
-          ..icon = 'savings'
-          ..type = TransactionType.income
-          ..isDefault = true,
-      ];
-      await isar.financeCategorys.putAll([...expenseCategories, ...incomeCategories]);
-    });
-  }
-
-  // Seed default wallets if empty
-  final walletCount = await isar.wallets.count();
-  if (walletCount == 0) {
-    await isar.writeTxn(() async {
-      final wallets = [
-        Wallet()
-          ..name = 'Uang Tunai'
-          ..icon = 'payments'
-          ..type = WalletType.cash
-          ..balance = 0,
-        Wallet()
-          ..name = 'Rekening Bank'
-          ..icon = 'account_balance'
-          ..type = WalletType.bank
-          ..balance = 0,
-        Wallet()
-          ..name = 'E-Wallet'
-          ..icon = 'smartphone'
-          ..type = WalletType.ewallet
-          ..balance = 0,
-      ];
-      await isar.wallets.putAll(wallets);
-    });
-  }
+  // Seed default wallets — REMOVED: user creates their own fund sources
+  // Seed default profile if empty (singleton)
+   final profileCount = await isar.userProfiles.count();
+   if (profileCount == 0) {
+     await isar.writeTxn(() async {
+       final profile = UserProfile()
+         ..name = ''
+         ..bio = ''
+         ..updatedAt = DateTime.now();
+       await isar.userProfiles.put(profile);
+     });
+   }
 }

@@ -8,10 +8,13 @@ import '../../../../core/utils/helpers.dart';
 import '../../../../core/widgets/glass.dart';
 import '../../../../data/models/finance_model.dart';
 import '../../../../data/providers/finance_provider.dart';
+import '../../../../data/providers/savings_provider.dart';
 import 'add_transaction_screen.dart';
 import 'add_budget_screen.dart';
 import 'finance_category_management_screen.dart';
-import 'dart:ui';
+import 'fund_source_management_screen.dart';
+import 'savings_category_management_screen.dart';
+import 'savings_detail_screen.dart';
 
 class FinanceScreen extends ConsumerStatefulWidget {
   const FinanceScreen({super.key});
@@ -23,15 +26,13 @@ class FinanceScreen extends ConsumerStatefulWidget {
 class _FinanceScreenState extends ConsumerState<FinanceScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  DateTime _selectedMonth = DateTime.now();
   int _currentTab = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      // Update saat tab sudah selesai berpindah (bukan saat animasi).
       if (!_tabController.indexIsChanging &&
           _tabController.index != _currentTab) {
         setState(() => _currentTab = _tabController.index);
@@ -56,8 +57,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
             tooltip: 'Kelola Kategori',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) =>
-                    const FinanceCategoryManagementScreen(),
+                builder: (_) => const FinanceCategoryManagementScreen(),
               ),
             ),
           ),
@@ -66,54 +66,25 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
           controller: _tabController,
           tabs: const [
             Tab(text: 'Transaksi'),
-            Tab(text: 'Anggaran'),
-            Tab(text: 'Statistik'),
+            Tab(text: 'Tabungan'),
           ],
-          labelColor: AppColors.primary,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: AppColors.primary,
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _TransactionsTab(selectedMonth: _selectedMonth),
-          _BudgetTab(),
-          _StatisticsTab(selectedMonth: _selectedMonth),
+        children: const [
+          _TransactionsTab(),
+          _SavingsTab(),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'finance_fab',
-        onPressed: _onFabPressed,
-        child: Icon(
-          _currentTab == 1
-              ? Icons.account_balance_wallet_outlined
-              : Icons.add,
-        ),
-      ),
     );
-  }
-
-  /// FAB bersifat kontekstual: tab Anggaran → buat anggaran, sisanya → tambah transaksi.
-  void _onFabPressed() {
-    if (_currentTab == 1) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const AddBudgetScreen()),
-      );
-    } else {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
-      );
-    }
   }
 }
 
 // ─── Transactions Tab ──────────────────────────────────────────────────────────
 
 class _TransactionsTab extends ConsumerStatefulWidget {
-  final DateTime selectedMonth;
-
-  const _TransactionsTab({required this.selectedMonth});
+  const _TransactionsTab();
 
   @override
   ConsumerState<_TransactionsTab> createState() => _TransactionsTabState();
@@ -125,7 +96,7 @@ class _TransactionsTabState extends ConsumerState<_TransactionsTab> {
   @override
   void initState() {
     super.initState();
-    _month = widget.selectedMonth;
+    _month = DateTime.now();
   }
 
   @override
@@ -135,12 +106,11 @@ class _TransactionsTabState extends ConsumerState<_TransactionsTab> {
       start: DateTime(_month.year, _month.month, 1),
       end: DateTime(_month.year, _month.month + 1, 0, 23, 59, 59),
     );
-    final summaryAsync = ref.watch(monthlySummaryProvider);
+    final summaryAsync = ref.watch(monthlySummaryProvider(dateRange));
     final transactionsAsync = ref.watch(transactionsProvider(dateRange));
 
     return Column(
       children: [
-        // Month picker
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           color: theme.scaffoldBackgroundColor,
@@ -170,92 +140,211 @@ class _TransactionsTabState extends ConsumerState<_TransactionsTab> {
           ),
         ),
 
-        // Summary — glass card style matching Dashboard
         summaryAsync.when(
           loading: () => const SizedBox(height: 140),
           error: (_, __) => const SizedBox.shrink(),
-          data: (summary) => Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-            child: GlassCardPro(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          data: (summary) {
+            final savingsAsync = ref.watch(oldestSavingsCategoriesProvider);
+            return savingsAsync.when(
+              loading: () => Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: GlassCardPro(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Ringkasan Bulan Ini',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          DateFormat('MMM yyyy', 'id_ID').format(_month),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Ringkasan Bulan Ini',
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: Colors.white, fontWeight: FontWeight.w700,
+                              )),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              DateFormat('MMM yyyy', 'id_ID').format(_month),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 11,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(child: _FinanceStatItem(label: 'Pemasukan', amount: summary.totalIncome, icon: Icons.arrow_downward_rounded, color: AppColors.income)),
+                          Container(width: 1, height: 48, color: Colors.white.withOpacity(0.15), margin: const EdgeInsets.symmetric(horizontal: 12)),
+                          Expanded(child: _FinanceStatItem(label: 'Pengeluaran', amount: summary.totalExpense, icon: Icons.arrow_upward_rounded, color: AppColors.expense)),
+                          Container(width: 1, height: 48, color: Colors.white.withOpacity(0.15), margin: const EdgeInsets.symmetric(horizontal: 12)),
+                          Expanded(child: _FinanceStatItem(label: 'Saldo', amount: summary.balance, icon: Icons.account_balance_wallet_outlined, color: summary.balance >= 0 ? AppColors.primary : AppColors.danger)),
+                        ],
+                      ),
+                      const SizedBox(height: 60),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _FinanceStatItem(
-                          label: 'Pemasukan',
-                          amount: summary.totalIncome,
-                          icon: Icons.arrow_downward_rounded,
-                          color: AppColors.income,
-                        ),
-                      ),
-                      Container(
-                        width: 1, height: 48,
-                        color: Colors.white.withOpacity(0.15),
-                        margin: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      Expanded(
-                        child: _FinanceStatItem(
-                          label: 'Pengeluaran',
-                          amount: summary.totalExpense,
-                          icon: Icons.arrow_upward_rounded,
-                          color: AppColors.expense,
-                        ),
-                      ),
-                      Container(
-                        width: 1, height: 48,
-                        color: Colors.white.withOpacity(0.15),
-                        margin: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      Expanded(
-                        child: _FinanceStatItem(
-                          label: 'Saldo',
-                          amount: summary.balance,
-                          icon: Icons.account_balance_wallet_outlined,
-                          color: summary.balance >= 0
-                              ? AppColors.primary
-                              : AppColors.danger,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
+              error: (_, __) => Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: GlassCardPro(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Ringkasan Bulan Ini',
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: Colors.white, fontWeight: FontWeight.w700,
+                              )),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              DateFormat('MMM yyyy', 'id_ID').format(_month),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(child: _FinanceStatItem(label: 'Pemasukan', amount: summary.totalIncome, icon: Icons.arrow_downward_rounded, color: AppColors.income)),
+                          Container(width: 1, height: 48, color: Colors.white.withOpacity(0.15), margin: const EdgeInsets.symmetric(horizontal: 12)),
+                          Expanded(child: _FinanceStatItem(label: 'Pengeluaran', amount: summary.totalExpense, icon: Icons.arrow_upward_rounded, color: AppColors.expense)),
+                          Container(width: 1, height: 48, color: Colors.white.withOpacity(0.15), margin: const EdgeInsets.symmetric(horizontal: 12)),
+                          Expanded(child: _FinanceStatItem(label: 'Saldo', amount: summary.balance, icon: Icons.account_balance_wallet_outlined, color: summary.balance >= 0 ? AppColors.primary : AppColors.danger)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              data: (categories) => Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: GlassCardPro(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Ringkasan Bulan Ini',
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: Colors.white, fontWeight: FontWeight.w700,
+                              )),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              DateFormat('MMM yyyy', 'id_ID').format(_month),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(child: _FinanceStatItem(label: 'Pemasukan', amount: summary.totalIncome, icon: Icons.arrow_downward_rounded, color: AppColors.income)),
+                          Container(width: 1, height: 48, color: Colors.white.withOpacity(0.15), margin: const EdgeInsets.symmetric(horizontal: 12)),
+                          Expanded(child: _FinanceStatItem(label: 'Pengeluaran', amount: summary.totalExpense, icon: Icons.arrow_upward_rounded, color: AppColors.expense)),
+                          Container(width: 1, height: 48, color: Colors.white.withOpacity(0.15), margin: const EdgeInsets.symmetric(horizontal: 12)),
+                          Expanded(child: _FinanceStatItem(label: 'Saldo', amount: summary.balance, icon: Icons.account_balance_wallet_outlined, color: summary.balance >= 0 ? AppColors.primary : AppColors.danger)),
+                        ],
+                      ),
+                      if (categories.isNotEmpty) ...[
+                        const SizedBox(height: 18),
+                        Container(height: 1, width: double.infinity, color: Colors.white.withOpacity(0.10)),
+                        const SizedBox(height: 16),
+                        ...categories.map((cat) => _CompactSavingsProgressCard(category: cat)),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => BudgetOverviewScreen(selectedMonth: _month)),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Lihat Anggaran',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.textTheme.bodyLarge?.color?.withOpacity(0.6),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: theme.textTheme.bodyLarge?.color?.withOpacity(0.6),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => _StatisticsScreen(selectedMonth: _month),
+                    ),
+                  );
+                },
+                child: Row(
+                  children: [
+                    Text(
+                      'Lihat Statistik',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.textTheme.bodyLarge?.color?.withOpacity(0.6),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: theme.textTheme.bodyLarge?.color?.withOpacity(0.6),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
 
-        // Transactions list
         Expanded(
           child: transactionsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -331,9 +420,29 @@ class _TransactionCard extends StatelessWidget {
                         style: theme.textTheme.bodyMedium,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
+                  if (transaction.type == TransactionType.income &&
+                      transaction.savingsAllocationAmount != null &&
+                      transaction.savingsAllocationAmount! > 0)
+                    Text(
+                      '-${CurrencyFormatter.format(transaction.savingsAllocationAmount!)} (${transaction.savingsCategoryName ?? "Tabungan"})',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.gray400,
+                        fontSize: 11,
+                      ),
+                    ),
+                  if (transaction.type == TransactionType.expense &&
+                      transaction.sourceType == 'savings' &&
+                      transaction.savingsCategoryName != null)
+                    Text(
+                      'Dari tabungan: ${transaction.savingsCategoryName}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.gray400,
+                        fontSize: 11,
+                      ),
+                    ),
                   const SizedBox(height: 2),
                   Text(
-                    '${transaction.walletName} • ${DateHelper.formatDate(transaction.date)}',
+                    '${transaction.walletName} \u2022 ${DateHelper.formatDate(transaction.date)}',
                     style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11),
                   ),
                 ],
@@ -352,66 +461,313 @@ class _TransactionCard extends StatelessWidget {
   }
 }
 
-// ─── Budget Tab ────────────────────────────────────────────────────────────────
+// ─── Savings Tab ──────────────────────────────────────────────────────────────
 
-class _BudgetTab extends ConsumerWidget {
+class _SavingsTab extends ConsumerWidget {
+  const _SavingsTab();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final budgetsAsync = ref.watch(budgetStatusProvider);
+    final categoriesAsync = ref.watch(savingsCategoriesProvider);
 
-    return budgetsAsync.when(
+    return categoriesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
-      data: (budgets) {
-        if (budgets.isEmpty) {
+      error: (_, __) => const Center(child: Text('Gagal memuat')),
+      data: (categories) {
+        if (categories.isEmpty) {
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(32),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.account_balance_wallet_outlined,
-                      size: 64, color: Colors.grey.withOpacity(0.4)),
-                  const SizedBox(height: 16),
-                  Text('Belum ada anggaran',
-                      style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Atur batas pengeluaran per kategori\nagar lebih mudah dikontrol tiap bulan.',
-                    style: theme.textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: theme.colorScheme.surface,
+                    ),
+                    child: Icon(Icons.savings_outlined, size: 36,
+                        color: theme.textTheme.bodyLarge?.color?.withOpacity(0.3)),
                   ),
                   const SizedBox(height: 20),
-                  ElevatedButton.icon(
+                  Text('Belum ada tabungan',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.textTheme.titleMedium?.color?.withOpacity(0.5),
+                      )),
+                  const SizedBox(height: 8),
+                  Text('Buat kategori tabungan pertama Anda.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.4),
+                      ),
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                          builder: (_) => const AddBudgetScreen()),
+                          builder: (_) => const SavingsCategoryManagementScreen()),
                     ),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Tambah Anggaran'),
+                    child: const Text('Buat Kategori'),
                   ),
                 ],
               ),
             ),
           );
         }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: budgets.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (_, i) => _BudgetCard(
-            budget: budgets[i],
-            onEdit: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => AddBudgetScreen(editing: budgets[i]),
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const SavingsCategoryManagementScreen()),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.category_outlined, size: 16,
+                            color: theme.textTheme.bodyLarge?.color?.withOpacity(0.6)),
+                        const SizedBox(width: 4),
+                        Text('Kelola Kategori',
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.textTheme.bodyLarge?.color?.withOpacity(0.6),
+                              fontWeight: FontWeight.w600, fontSize: 13,
+                            )),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const FundSourceManagementScreen()),
+                    ),
+                    child: Row(
+                      children: [
+                        Text('Kelola Sumber Dana',
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.textTheme.bodyLarge?.color?.withOpacity(0.6),
+                              fontWeight: FontWeight.w600, fontSize: 13,
+                            )),
+                        const SizedBox(width: 2),
+                        Icon(Icons.chevron_right, size: 16,
+                            color: theme.textTheme.bodyLarge?.color?.withOpacity(0.6)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            onDelete: () =>
-                _confirmBudgetDelete(context, ref, budgets[i]),
-          ),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                itemCount: categories.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (_, i) => _SavingsWidgetCard(category: categories[i]),
+              ),
+            ),
+          ],
         );
       },
+    );
+  }
+}
+
+class _SavingsWidgetCard extends StatelessWidget {
+  final SavingsCategory category;
+
+  const _SavingsWidgetCard({required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasTarget = category.targetAmount != null && category.targetAmount! > 0;
+    final percentage = hasTarget
+        ? (category.currentAmount / category.targetAmount!).clamp(0.0, 1.0) as double
+        : null;
+    final isCompleted = percentage != null && percentage >= 1.0;
+
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => SavingsDetailScreen(category: category)),
+      ),
+      child: GlassCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconBox(
+                  icon: tryParseIconData(category.icon) ?? Icons.savings,
+                  size: 48,
+                  radius: 14,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(category.name,
+                                style: theme.textTheme.labelLarge,
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                          if (isCompleted) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text('Tercapai',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.w700,
+                                  )),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        CurrencyFormatter.format(category.currentAmount),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700, color: AppColors.primary,
+                        ),
+                      ),
+                      if (hasTarget) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          '${CurrencyFormatter.format(category.targetAmount!)} (${(percentage! * 100).toInt()}%)',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.textTheme.bodyLarge?.color?.withOpacity(0.5),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right,
+                    color: theme.textTheme.bodyLarge?.color?.withOpacity(0.3)),
+              ],
+            ),
+            if (hasTarget) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: percentage,
+                  backgroundColor: AppColors.gray700.withOpacity(0.3),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isCompleted ? AppColors.primary : AppColors.secondary,
+                  ),
+                  minHeight: 8,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Budget Overview Screen ───────────────────────────────────────────────────
+
+class BudgetOverviewScreen extends ConsumerWidget {
+  final DateTime selectedMonth;
+
+  const BudgetOverviewScreen({super.key, required this.selectedMonth});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final dateRange = DateRange(
+      start: DateTime(selectedMonth.year, selectedMonth.month, 1),
+      end: DateTime(selectedMonth.year, selectedMonth.month + 1, 0, 23, 59, 59),
+    );
+    final budgetsAsync = ref.watch(budgetStatusProvider(dateRange));
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Anggaran - ${DateFormat('MMMM yyyy', 'id_ID').format(selectedMonth)}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Atur Anggaran',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AddBudgetScreen()),
+            ),
+          ),
+        ],
+      ),
+      body: budgetsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (budgets) {
+          if (budgets.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: theme.colorScheme.surface,
+                      ),
+                      child: Icon(Icons.account_balance_wallet_outlined,
+                          size: 32, color: theme.textTheme.bodyLarge?.color?.withOpacity(0.3)),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Belum ada anggaran', style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Atur batas pengeluaran per kategori\nagar lebih mudah dikontrol tiap bulan.',
+                      style: theme.textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AddBudgetScreen()),
+                      ),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Tambah Anggaran'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: budgets.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (_, i) => _BudgetCard(
+              budget: budgets[i],
+              onEdit: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => AddBudgetScreen(editing: budgets[i]),
+                ),
+              ),
+              onDelete: () => _confirmBudgetDelete(context, ref, budgets[i]),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -477,8 +833,7 @@ class _BudgetCard extends StatelessWidget {
             Row(
               children: [
                 IconBox(
-                  icon: tryParseIconData(budget.categoryIcon) ??
-                      Icons.category,
+                  icon: tryParseIconData(budget.categoryIcon) ?? Icons.category,
                   size: 48,
                   iconSize: 24,
                   radius: 14,
@@ -558,203 +913,176 @@ class _BudgetCard extends StatelessWidget {
   }
 }
 
-// ─── Statistics Tab ───────────────────────────────────────────────────────────
+// ─── Statistics Screen ────────────────────────────────────────────────────────
 
-class _StatisticsTab extends ConsumerWidget {
+class _StatisticsScreen extends ConsumerWidget {
   final DateTime selectedMonth;
 
-  const _StatisticsTab({required this.selectedMonth});
+  const _StatisticsScreen({required this.selectedMonth});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final summaryAsync = ref.watch(monthlySummaryProvider);
+    final dateRange = DateRange(
+      start: DateTime(selectedMonth.year, selectedMonth.month, 1),
+      end: DateTime(selectedMonth.year, selectedMonth.month + 1, 0, 23, 59, 59),
+    );
+    final summaryAsync = ref.watch(monthlySummaryProvider(dateRange));
 
-    return summaryAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
-      data: (summary) {
-        if (summary.expenseByCategory.isEmpty) {
-          return const _EmptyFinance();
-        }
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Statistik - ${DateFormat('MMMM yyyy', 'id_ID').format(selectedMonth)}'),
+      ),
+      body: summaryAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (summary) {
+          if (summary.expenseByCategory.isEmpty) {
+            return const _EmptyFinance();
+          }
 
-        final sortedExpenses = summary.expenseByCategory.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
+          final sortedExpenses = summary.expenseByCategory.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Pie Chart
-              GlassCard(
-                padding: const EdgeInsets.all(20),
-                radius: 20,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Pengeluaran per Kategori',
-                        style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      height: 200,
-                      child: PieChart(
-                        PieChartData(
-                          sections: sortedExpenses.asMap().entries.map((e) {
-                            final index = e.key;
-                            final entry = e.value;
-                            final percentage =
-                                entry.value / summary.totalExpense * 100;
-                            final color = AppColors.chartColors[
-                            index % AppColors.chartColors.length];
-                            return PieChartSectionData(
-                              value: entry.value,
-                              title: percentage > 5
-                                  ? '${percentage.toInt()}%'
-                                  : '',
-                              color: color,
-                              radius: 80,
-                              titleStyle: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            );
-                          }).toList(),
-                          sectionsSpace: 2,
-                          centerSpaceRadius: 40,
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GlassCard(
+                  padding: const EdgeInsets.all(20),
+                  radius: 20,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Pengeluaran per Kategori',
+                          style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        height: 200,
+                        child: PieChart(
+                          PieChartData(
+                            sections: sortedExpenses.asMap().entries.map((e) {
+                              final index = e.key;
+                              final entry = e.value;
+                              final percentage =
+                                  entry.value / summary.totalExpense * 100;
+                              final color = AppColors.chartColors[
+                              index % AppColors.chartColors.length];
+                              return PieChartSectionData(
+                                value: entry.value,
+                                title: percentage > 5
+                                    ? '${percentage.toInt()}%'
+                                    : '',
+                                color: color,
+                                radius: 80,
+                                titleStyle: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              );
+                            }).toList(),
+                            sectionsSpace: 2,
+                            centerSpaceRadius: 40,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Legend
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 8,
-                      children: sortedExpenses.asMap().entries.map((e) {
+                      const SizedBox(height: 20),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 8,
+                        children: sortedExpenses.asMap().entries.map((e) {
+                          final index = e.key;
+                          final entry = e.value;
+                          final color = AppColors.chartColors[
+                          index % AppColors.chartColors.length];
+                          return Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 10, height: 10,
+                                decoration: BoxDecoration(
+                                  color: color, shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                entry.key,
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(fontSize: 12),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GlassCard(
+                  padding: const EdgeInsets.all(20),
+                  radius: 20,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Rincian Pengeluaran',
+                          style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 12),
+                      ...sortedExpenses.asMap().entries.map((e) {
                         final index = e.key;
                         final entry = e.value;
                         final color = AppColors.chartColors[
                         index % AppColors.chartColors.length];
-                        return Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 10, height: 10,
-                              decoration: BoxDecoration(
-                                color: color, shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              entry.key,
-                              style: theme.textTheme.bodyMedium
-                                  ?.copyWith(fontSize: 12),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
+                        final pct = entry.value / summary.totalExpense;
 
-              const SizedBox(height: 16),
-
-              // Category breakdown
-              GlassCard(
-                padding: const EdgeInsets.all(20),
-                radius: 20,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Rincian Pengeluaran',
-                        style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 12),
-                    ...sortedExpenses.asMap().entries.map((e) {
-                      final index = e.key;
-                      final entry = e.value;
-                      final color = AppColors.chartColors[
-                      index % AppColors.chartColors.length];
-                      final pct = entry.value / summary.totalExpense;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(entry.key,
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(entry.key,
+                                      style: theme.textTheme.bodyLarge?.copyWith(
+                                          fontWeight: FontWeight.w500)),
+                                  Text(
+                                    CurrencyFormatter.formatCompact(entry.value),
                                     style: theme.textTheme.bodyLarge?.copyWith(
-                                        fontWeight: FontWeight.w500)),
-                                Text(
-                                  CurrencyFormatter.formatCompact(entry.value),
-                                  style: theme.textTheme.bodyLarge?.copyWith(
-                                    fontWeight: FontWeight.w700, color: color,
+                                      fontWeight: FontWeight.w700, color: color,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: pct,
-                                backgroundColor: color.withOpacity(0.1),
-                                valueColor:
-                                AlwaysStoppedAnimation<Color>(color),
-                                minHeight: 6,
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
+                              const SizedBox(height: 6),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: pct,
+                                  backgroundColor: color.withOpacity(0.1),
+                                  valueColor:
+                                  AlwaysStoppedAnimation<Color>(color),
+                                  minHeight: 6,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-class _SummaryItem extends StatelessWidget {
-  final String label;
-  final double amount;
-  final Color color;
-
-  const _SummaryItem({
-    required this.label,
-    required this.amount,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        Text(label, style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11)),
-        const SizedBox(height: 4),
-        Text(
-          CurrencyFormatter.formatCompact(amount.abs()),
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: color, fontWeight: FontWeight.w700, fontSize: 14,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-}
 
 class _FinanceStatItem extends StatelessWidget {
   final String label;
@@ -808,6 +1136,101 @@ class _FinanceStatItem extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
       ],
+    );
+  }
+}
+
+class _CompactSavingsProgressCard extends StatelessWidget {
+  final SavingsCategory category;
+
+  const _CompactSavingsProgressCard({required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasTarget = category.targetAmount != null && category.targetAmount! > 0;
+    final percentage = hasTarget
+        ? (category.currentAmount / category.targetAmount!).clamp(0.0, 1.0) as double
+        : null;
+    final isCompleted = percentage != null && percentage >= 1.0;
+
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => SavingsDetailScreen(category: category)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        category.name,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.white.withOpacity(0.6),
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isCompleted) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Tercapai',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (hasTarget)
+                Text(
+                  '${CurrencyFormatter.formatCompact(category.currentAmount)} / ${CurrencyFormatter.formatCompact(category.targetAmount!)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                )
+              else
+                Text(
+                  CurrencyFormatter.formatCompact(category.currentAmount),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                ),
+            ],
+          ),
+          if (hasTarget) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: percentage,
+                backgroundColor: AppColors.gray700.withOpacity(0.3),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isCompleted ? AppColors.primary : AppColors.secondary,
+                ),
+                minHeight: 6,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

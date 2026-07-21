@@ -242,11 +242,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen>
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'note_fab',
-        onPressed: () => _openEditor(context, null),
-        child: const Icon(Icons.add),
-      ),
     );
   }
 

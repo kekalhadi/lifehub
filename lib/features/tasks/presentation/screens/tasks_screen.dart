@@ -242,13 +242,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'tasks_fab',
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddTaskScreen()),
-        ),
-        child: const Icon(Icons.add),
-      ),
     );
   }
 }

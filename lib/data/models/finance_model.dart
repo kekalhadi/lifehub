@@ -4,8 +4,6 @@ part 'finance_model.g.dart';
 
 enum TransactionType { income, expense }
 
-enum WalletType { cash, bank, ewallet }
-
 @collection
 class FinanceCategory {
   Id id = Isar.autoIncrement;
@@ -30,9 +28,6 @@ class Wallet {
 
   late String icon;
 
-  @enumerated
-  late WalletType type;
-
   double balance = 0;
 }
 
@@ -49,7 +44,19 @@ class Transaction {
 
   late String categoryIcon;
 
-  late String walletName;
+  String walletName = '';
+
+  String fundSourceName = '';
+
+  int? fundSourceId;
+
+  String sourceType = 'balance';
+
+  int? savingsCategoryId;
+
+  String? savingsCategoryName;
+
+  double? savingsAllocationAmount;
 
   String note = '';
 
@@ -59,26 +66,39 @@ class Transaction {
 
   bool isRecurring = false;
 
-  String? recurringInterval; // 'monthly', 'weekly'
+  String? recurringInterval;
 
-  int? taskId; // Reference to originating Task (for budget integration)
+  int? taskId;
 }
 
 @collection
-class SavingsGoal {
+class SavingsCategory {
   Id id = Isar.autoIncrement;
 
-  late String title;
+  late String name;
 
   late String icon;
 
-  late double targetAmount;
+  double? targetAmount;
+
+  DateTime? targetDate;
 
   double currentAmount = 0;
 
-  late DateTime targetDate;
+  late DateTime createdAt;
+}
+
+@collection
+class SavingsLedger {
+  Id id = Isar.autoIncrement;
+
+  late int savingsCategoryId;
+
+  late String type;
+
+  late double amount;
+
+  int? relatedTransactionId;
 
   late DateTime createdAt;
-
-  bool isCompleted = false;
 }

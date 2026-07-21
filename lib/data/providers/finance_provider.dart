@@ -3,7 +3,6 @@ import 'package:isar/isar.dart';
 import '../models/finance_model.dart';
 import 'database_provider.dart';
 
-// All transactions with optional date filter
 final transactionsProvider = FutureProvider.family<List<Transaction>, DateRange>((ref, range) async {
   final isar = await ref.watch(isarProvider.future);
   return isar.transactions
@@ -13,7 +12,6 @@ final transactionsProvider = FutureProvider.family<List<Transaction>, DateRange>
       .findAll();
 });
 
-// Today's transactions for dashboard
 final todayTransactionsProvider = FutureProvider<List<Transaction>>((ref) async {
   final isar = await ref.watch(isarProvider.future);
   final now = DateTime.now();
@@ -26,25 +24,23 @@ final todayTransactionsProvider = FutureProvider<List<Transaction>>((ref) async 
       .findAll();
 });
 
-// Monthly summary for current month
-final monthlySummaryProvider = FutureProvider<MonthlySummary>((ref) async {
+final monthlySummaryProvider = FutureProvider.family<MonthlySummary, DateRange>((ref, range) async {
   final isar = await ref.watch(isarProvider.future);
-  final now = DateTime.now();
-  final start = DateTime(now.year, now.month, 1);
-  final end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
 
   final transactions = await isar.transactions
       .filter()
-      .dateBetween(start, end)
+      .dateBetween(range.start, range.end)
       .findAll();
 
   double totalIncome = 0;
   double totalExpense = 0;
+  double totalAllocated = 0;
   final Map<String, double> expenseByCategory = {};
 
   for (final t in transactions) {
     if (t.type == TransactionType.income) {
       totalIncome += t.amount;
+      totalAllocated += (t.savingsAllocationAmount ?? 0);
     } else {
       totalExpense += t.amount;
       expenseByCategory[t.categoryName] =
@@ -55,26 +51,27 @@ final monthlySummaryProvider = FutureProvider<MonthlySummary>((ref) async {
   return MonthlySummary(
     totalIncome: totalIncome,
     totalExpense: totalExpense,
+    totalAllocated: totalAllocated,
     expenseByCategory: expenseByCategory,
     transactionCount: transactions.length,
   );
 });
 
-// Wallets provider
-final walletsProvider = FutureProvider<List<Wallet>>((ref) async {
+final fundSourcesProvider = StreamProvider<List<Wallet>>((ref) async* {
   final isar = await ref.watch(isarProvider.future);
-  return isar.wallets.where().findAll();
+  yield* isar.wallets
+      .where()
+      .watch(fireImmediately: true);
 });
 
-// Finance categories provider
-final financeCategoriesProvider = FutureProvider.family<List<FinanceCategory>, TransactionType>(
-      (ref, type) async {
-    final isar = await ref.watch(isarProvider.future);
-    return isar.financeCategorys.filter().typeEqualTo(type).findAll();
-  },
-);
+final walletsProvider = fundSourcesProvider;
 
-// All finance categories (stream) — dipakai di layar kelola kategori
+final financeCategoriesProvider = FutureProvider.family<List<FinanceCategory>, TransactionType>(
+    (ref, type) async {
+  final isar = await ref.watch(isarProvider.future);
+  return isar.financeCategorys.filter().typeEqualTo(type).findAll();
+});
+
 final allFinanceCategoriesProvider = StreamProvider<List<FinanceCategory>>((ref) async* {
   final isar = await ref.watch(isarProvider.future);
   yield* isar.financeCategorys
@@ -82,18 +79,13 @@ final allFinanceCategoriesProvider = StreamProvider<List<FinanceCategory>>((ref)
       .watch(fireImmediately: true);
 });
 
-// Savings goals provider
-final savingsGoalsProvider = FutureProvider<List<SavingsGoal>>((ref) async {
+final savingsGoalsProvider = FutureProvider<List<Wallet>>((ref) async {
   final isar = await ref.watch(isarProvider.future);
-  return isar.savingsGoals.where().sortByCreatedAtDesc().findAll();
+  return isar.wallets.where().findAll();
 });
 
-// Budget status for current month
-final budgetStatusProvider = FutureProvider<List<BudgetStatus>>((ref) async {
+final budgetStatusProvider = FutureProvider.family<List<BudgetStatus>, DateRange>((ref, range) async {
   final isar = await ref.watch(isarProvider.future);
-  final now = DateTime.now();
-  final start = DateTime(now.year, now.month, 1);
-  final end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
 
   final categories = await isar.financeCategorys
       .filter()
@@ -104,7 +96,7 @@ final budgetStatusProvider = FutureProvider<List<BudgetStatus>>((ref) async {
   final transactions = await isar.transactions
       .filter()
       .typeEqualTo(TransactionType.expense)
-      .dateBetween(start, end)
+      .dateBetween(range.start, range.end)
       .findAll();
 
   final Map<String, double> spentByCategory = {};
@@ -124,7 +116,6 @@ final budgetStatusProvider = FutureProvider<List<BudgetStatus>>((ref) async {
   }).toList();
 });
 
-// Finance mutations
 class FinanceNotifier extends Notifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncValue.data(null);
@@ -136,18 +127,57 @@ class FinanceNotifier extends Notifier<AsyncValue<void>> {
       transaction.createdAt = DateTime.now();
       await isar.writeTxn(() async {
         await isar.transactions.put(transaction);
-        // Update wallet balance
-        final wallets = await isar.wallets.where().findAll();
-        final wallet = wallets.firstWhere(
-              (w) => w.name == transaction.walletName,
-          orElse: () => wallets.first,
-        );
-        if (transaction.type == TransactionType.income) {
-          wallet.balance += transaction.amount;
-        } else {
-          wallet.balance -= transaction.amount;
+
+        // Update fund source balance
+        if (transaction.fundSourceId != null) {
+          final fundSource = await isar.wallets.get(transaction.fundSourceId!);
+          if (fundSource != null) {
+            if (transaction.type == TransactionType.income) {
+              final allocation = transaction.savingsAllocationAmount ?? 0;
+              fundSource.balance += (transaction.amount - allocation);
+            } else if (transaction.sourceType == 'balance') {
+              fundSource.balance -= transaction.amount;
+            }
+            await isar.wallets.put(fundSource);
+          }
         }
-        await isar.wallets.put(wallet);
+
+        // Savings allocation (income)
+        if (transaction.type == TransactionType.income &&
+            transaction.savingsCategoryId != null &&
+            transaction.savingsAllocationAmount != null &&
+            transaction.savingsAllocationAmount! > 0) {
+          final savingsCat = await isar.savingsCategorys.get(transaction.savingsCategoryId!);
+          if (savingsCat != null) {
+            savingsCat.currentAmount += transaction.savingsAllocationAmount!;
+            await isar.savingsCategorys.put(savingsCat);
+          }
+          final ledger = SavingsLedger()
+            ..savingsCategoryId = transaction.savingsCategoryId!
+            ..type = 'allocation'
+            ..amount = transaction.savingsAllocationAmount!
+            ..relatedTransactionId = transaction.id
+            ..createdAt = DateTime.now();
+          await isar.savingsLedgers.put(ledger);
+        }
+
+        // Savings withdrawal (expense)
+        if (transaction.type == TransactionType.expense &&
+            transaction.sourceType == 'savings' &&
+            transaction.savingsCategoryId != null) {
+          final savingsCat = await isar.savingsCategorys.get(transaction.savingsCategoryId!);
+          if (savingsCat != null) {
+            savingsCat.currentAmount -= transaction.amount;
+            await isar.savingsCategorys.put(savingsCat);
+          }
+          final ledger = SavingsLedger()
+            ..savingsCategoryId = transaction.savingsCategoryId!
+            ..type = 'withdrawal'
+            ..amount = transaction.amount
+            ..relatedTransactionId = transaction.id
+            ..createdAt = DateTime.now();
+          await isar.savingsLedgers.put(ledger);
+        }
       });
       state = const AsyncValue.data(null);
       _invalidateAll();
@@ -161,19 +191,53 @@ class FinanceNotifier extends Notifier<AsyncValue<void>> {
     try {
       final isar = await ref.read(isarProvider.future);
       await isar.writeTxn(() async {
-        await isar.transactions.delete(transaction.id);
-        // Reverse wallet balance change
-        final wallets = await isar.wallets.where().findAll();
-        final wallet = wallets.firstWhere(
-              (w) => w.name == transaction.walletName,
-          orElse: () => wallets.first,
-        );
-        if (transaction.type == TransactionType.income) {
-          wallet.balance -= transaction.amount;
-        } else {
-          wallet.balance += transaction.amount;
+        // Reverse fund source balance
+        if (transaction.fundSourceId != null) {
+          final fundSource = await isar.wallets.get(transaction.fundSourceId!);
+          if (fundSource != null) {
+            if (transaction.type == TransactionType.income) {
+              final allocation = transaction.savingsAllocationAmount ?? 0;
+              fundSource.balance -= (transaction.amount - allocation);
+            } else if (transaction.sourceType == 'balance') {
+              fundSource.balance += transaction.amount;
+            }
+            await isar.wallets.put(fundSource);
+          }
         }
-        await isar.wallets.put(wallet);
+
+        // Reverse savings allocation
+        if (transaction.type == TransactionType.income &&
+            transaction.savingsCategoryId != null &&
+            transaction.savingsAllocationAmount != null &&
+            transaction.savingsAllocationAmount! > 0) {
+          final savingsCat = await isar.savingsCategorys.get(transaction.savingsCategoryId!);
+          if (savingsCat != null) {
+            savingsCat.currentAmount -= transaction.savingsAllocationAmount!;
+            await isar.savingsCategorys.put(savingsCat);
+          }
+        }
+
+        // Reverse savings withdrawal
+        if (transaction.type == TransactionType.expense &&
+            transaction.sourceType == 'savings' &&
+            transaction.savingsCategoryId != null) {
+          final savingsCat = await isar.savingsCategorys.get(transaction.savingsCategoryId!);
+          if (savingsCat != null) {
+            savingsCat.currentAmount += transaction.amount;
+            await isar.savingsCategorys.put(savingsCat);
+          }
+        }
+
+        // Delete ledger entries
+        final ledgerEntries = await isar.savingsLedgers
+            .filter()
+            .relatedTransactionIdEqualTo(transaction.id)
+            .findAll();
+        if (ledgerEntries.isNotEmpty) {
+          await isar.savingsLedgers.deleteAll(ledgerEntries.map((e) => e.id).toList());
+        }
+
+        await isar.transactions.delete(transaction.id);
       });
       state = const AsyncValue.data(null);
       _invalidateAll();
@@ -182,44 +246,41 @@ class FinanceNotifier extends Notifier<AsyncValue<void>> {
     }
   }
 
-  Future<void> updateWalletBalance(int walletId, double newBalance) async {
-    final isar = await ref.read(isarProvider.future);
-    await isar.writeTxn(() async {
-      final wallet = await isar.wallets.get(walletId);
-      if (wallet != null) {
-        wallet.balance = newBalance;
-        await isar.wallets.put(wallet);
-      }
-    });
-    ref.invalidate(walletsProvider);
+  // ===== Fund Source CRUD =====
+
+  Future<int> saveFundSource(Wallet fundSource) async {
+    state = const AsyncValue.loading();
+    try {
+      final isar = await ref.read(isarProvider.future);
+      int id = 0;
+      await isar.writeTxn(() async {
+        id = await isar.wallets.put(fundSource);
+      });
+      state = const AsyncValue.data(null);
+      ref.invalidate(fundSourcesProvider);
+      return id;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return -1;
+    }
   }
 
-  Future<void> addSavingsGoal(SavingsGoal goal) async {
-    final isar = await ref.read(isarProvider.future);
-    goal.createdAt = DateTime.now();
-    await isar.writeTxn(() async {
-      await isar.savingsGoals.put(goal);
-    });
-    ref.invalidate(savingsGoalsProvider);
-  }
-
-  Future<void> updateSavingsProgress(int goalId, double amount) async {
-    final isar = await ref.read(isarProvider.future);
-    await isar.writeTxn(() async {
-      final goal = await isar.savingsGoals.get(goalId);
-      if (goal != null) {
-        goal.currentAmount = amount;
-        goal.isCompleted = amount >= goal.targetAmount;
-        await isar.savingsGoals.put(goal);
-      }
-    });
-    ref.invalidate(savingsGoalsProvider);
+  Future<void> deleteFundSource(int id) async {
+    state = const AsyncValue.loading();
+    try {
+      final isar = await ref.read(isarProvider.future);
+      await isar.writeTxn(() async {
+        await isar.wallets.delete(id);
+      });
+      state = const AsyncValue.data(null);
+      ref.invalidate(fundSourcesProvider);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
   }
 
   // ===== Category CRUD =====
 
-  /// Buat atau perbarui kategori finance.
-  /// Mengembalikan id (>0 sukses, -1 gagal).
   Future<int> saveFinanceCategory(FinanceCategory category) async {
     state = const AsyncValue.loading();
     try {
@@ -237,18 +298,11 @@ class FinanceNotifier extends Notifier<AsyncValue<void>> {
     }
   }
 
-  /// Hapus kategori finance. Kategori bawaan tidak bisa dihapus.
-  /// Transaksi yang memakai nama kategori ini tetap dipertahankan
-  /// (datanya sudah ter-snapshot di record transaksi).
   Future<void> deleteFinanceCategory(int id) async {
     state = const AsyncValue.loading();
     try {
       final isar = await ref.read(isarProvider.future);
       await isar.writeTxn(() async {
-        final cat = await isar.financeCategorys.get(id);
-        if (cat != null && cat.isDefault) {
-          throw Exception('Tidak bisa menghapus kategori bawaan');
-        }
         await isar.financeCategorys.delete(id);
       });
       state = const AsyncValue.data(null);
@@ -267,7 +321,6 @@ class FinanceNotifier extends Notifier<AsyncValue<void>> {
 
   // ===== Budget CRUD =====
 
-  /// Buat atau perbarui batas anggaran untuk sebuah kategori pengeluaran.
   Future<void> setBudget(int categoryId, double amount) async {
     final isar = await ref.read(isarProvider.future);
     await isar.writeTxn(() async {
@@ -280,8 +333,6 @@ class FinanceNotifier extends Notifier<AsyncValue<void>> {
     _invalidateBudgets();
   }
 
-  /// Hapus anggaran (set budgetLimit = null). Kategori tetap dipertahankan,
-  /// hanya batas anggarannya yang dihapus.
   Future<void> removeBudget(int categoryId) async {
     final isar = await ref.read(isarProvider.future);
     await isar.writeTxn(() async {
@@ -303,7 +354,7 @@ class FinanceNotifier extends Notifier<AsyncValue<void>> {
     ref.invalidate(transactionsProvider);
     ref.invalidate(todayTransactionsProvider);
     ref.invalidate(monthlySummaryProvider);
-    ref.invalidate(walletsProvider);
+    ref.invalidate(fundSourcesProvider);
     ref.invalidate(budgetStatusProvider);
   }
 }
@@ -312,7 +363,6 @@ final financeNotifierProvider = NotifierProvider<FinanceNotifier, AsyncValue<voi
   FinanceNotifier.new,
 );
 
-// Data classes
 class DateRange {
   final DateTime start;
   final DateTime end;
@@ -338,14 +388,16 @@ class DateRange {
 class MonthlySummary {
   final double totalIncome;
   final double totalExpense;
+  final double totalAllocated;
   final Map<String, double> expenseByCategory;
   final int transactionCount;
 
-  double get balance => totalIncome - totalExpense;
+  double get balance => totalIncome - totalExpense - totalAllocated;
 
   const MonthlySummary({
     required this.totalIncome,
     required this.totalExpense,
+    required this.totalAllocated,
     required this.expenseByCategory,
     required this.transactionCount,
   });

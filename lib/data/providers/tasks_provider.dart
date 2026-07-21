@@ -91,6 +91,21 @@ final todayTasksStreamProvider = StreamProvider<List<Task>>((ref) async* {
       .watch(fireImmediately: true);
 });
 
+// All today tasks (including completed) — for dashboard progress bar
+final allTodayTasksStreamProvider = StreamProvider<List<Task>>((ref) async* {
+  final isar = await ref.watch(isarProvider.future);
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
+  final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+  yield* isar.tasks
+      .filter()
+      .dueDateBetween(todayStart, todayEnd)
+      .sortByPriorityDesc()
+      .thenByCreatedAtDesc()
+      .watch(fireImmediately: true);
+});
+
 // Due today count
 final dueTodayCountProvider = StreamProvider<int>((ref) async* {
   final isar = await ref.watch(isarProvider.future);
